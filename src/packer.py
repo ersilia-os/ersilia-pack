@@ -4,14 +4,16 @@ import argparse
 import datetime
 import uuid
 import subprocess
+import json
 
 root = os.path.dirname(os.path.abspath(__file__))
 
 
 class FastApiAppPacker(object):
-    def __init__(self, model_id, repo_path):
+    def __init__(self, model_id, repo_path, conda):
         self.model_id = model_id
         self.dest_dir = repo_path
+        self.conda = conda
         if not os.path.exists(self.dest_dir):
             raise Exception("Model path {0} does not exist".format(self.dest_dir))
         timestamp = datetime.datetime.now().strftime("%Y%m%d")
@@ -55,14 +57,30 @@ class FastApiAppPacker(object):
         )
         # TODO: It should incorporate all the API endpoints that are necessary (beyond 'run')
 
-    def _install_packages(self):
+    def _install_packages_system(self):
         cmd = "bash {0}/install.sh".format(self.dest_dir)
         subprocess.Popen(cmd, shell=True).wait()
+
+    def _store_environment_mode(self):
+        if self.conda:
+            data = {"mode": "conda"}
+        else:
+            data = {"mode": "system"}
+        with open(os.path.join(self.bundle_dir, "environment_mode.json"), "w") as f:
+            f.write(json.dumps(data))
+
+    def _install_packages_conda(self):
+        # TODO: Implement this method
+        pass
 
     def pack(self):
         self._create_bundle_structure()
         self._create_app_file()
-        self._install_packages()
+        if self.conda:
+            self._install_packages_conda()
+        else:
+            self._install_packages_system()
+        self._store_environment_mode()
 
 
 def main():
@@ -73,8 +91,11 @@ def main():
     parser.add_argument(
         "--repo_path", required=True, type=str, help="Path to the model repository"
     )
+    parser.add_argument(
+        "--conda", action="store_true", help="Flag to indicate whether to use conda"
+    )
     args = parser.parse_args()
-    fp = FastApiAppPacker(args.model_id, args.repo_path)
+    fp = FastApiAppPacker(args.model_id, args.repo_path, args.conda)
     fp.pack()
 
 
