@@ -145,28 +145,24 @@ def output_header():
 
 
 @app.post("/run", tags=["App"])
-async def run(file: Optional[UploadFile] = File(...), data: Optional[list] = None):
+async def run(data: Optional[list] = None):
     """
     Upload an input file to the server and run predictions or pass a list of inputs and run predictions.
 
     """
+    # This is for compatibility with previous eos-templates (based on bentoml)
+    d0 = data[0]
+    if isinstance(d0, dict):
+        if "input" in d0.keys():
+            data = [d["input"] for d in data]
+
     tag = str(uuid.uuid4())
-    if file is None and data is None:
-        raise Exception("Please provide data, either as a file or as a list")
-    if file is not None and data is not None:
-        raise Exception(
-            "Both a file and data were provided separately. Only one option is allowed at a time."
-        )
     input_file = "{0}/{1}".format(tmp_folder, "input-{0}.csv".format(tag))
-    if file is not None:
-        with open(input_file, "wb") as buffer:
-            buffer.write(await file.read())
-    else:
-        with open(input_file, "w") as f:
-            writer = csv.writer(f)
-            writer.writerow(["input"])
-            for r in data:
-                writer.writerow([r])
+    with open(input_file, "w") as f:
+        writer = csv.writer(f)
+        writer.writerow(["input"])
+        for r in data:
+            writer.writerow([r])
     output_file = "{0}/{1}".format(tmp_folder, "output-{0}.csv".format(tag))
     cmd = "cd {0}; bash run.sh {1} {2}; cd {3}".format(
         framework_folder, input_file, output_file, root
