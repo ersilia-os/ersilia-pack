@@ -1,4 +1,4 @@
-# New Ersilia packaging based on FastAPI
+# Ersilia packaging based on FastAPI
 
 ## The model repository
 
