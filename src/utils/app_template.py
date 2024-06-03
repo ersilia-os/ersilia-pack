@@ -5,11 +5,13 @@ import csv
 import os
 import tempfile
 import subprocess
-from typing import Optional
+from typing import List, Union, Dict
+from pydantic import RootModel
+
 
 root = os.path.dirname(os.path.abspath(__file__))
 bundle_folder = os.path.abspath(os.path.join(root, ".."))
-framework_folder = os.path.join(root, "model", "framework")
+framework_folder = os.path.abspath(os.path.join(root, "..", "model", "framework"))
 tmp_folder = tempfile.mkdtemp(prefix="ersilia-")
 
 
@@ -27,19 +29,10 @@ app = FastAPI(
 
 @app.get("/", tags=["Checks"])
 def read_root():
-    return {"Hello": "Ersilia"}
+    return {info_data["card"]["Identifier"]: info_data["card"]["Slug"]}
 
 
 # Metadata
-
-@app.get("/info", tags=["Metadata"])
-def info():
-    """
-    Get information for the Ersilia Model
-
-    """
-    return info_data
-
 
 @app.get("/card", tags=["Metadata"])
 def card():
@@ -120,16 +113,26 @@ def output_header():
 
 # Model endpoints
 
+# Define the expected request body using Pydantic
+class StringList(RootModel[List[str]]):
+    pass
+
+class DictList(RootModel[List[Dict[str, str]]]):
+    pass
+
+InputList = Union[StringList, DictList]
+
 
 @app.post("/run", tags=["App"])
-async def run(data: Optional[list] = None):
+async def run(request: InputList = None):
     """
-    Pass a list of inputs to the model. The model will return a list of outputs.
+    Pass a list of inputs to the model. The model will return a list of outputs
 
     """
+    data = request.root
     # This is for compatibility with previous eos-templates (based on bentoml)
     d0 = data[0]
-    if isinstance(d0, dict):
+    if isinstance(d0, Dict):
         if "input" in d0.keys():
             data = [d["input"] for d in data]
 
@@ -141,9 +144,10 @@ async def run(data: Optional[list] = None):
         for r in data:
             writer.writerow([r])
     output_file = "{0}/{1}".format(tmp_folder, "output-{0}.csv".format(tag))
-    cmd = "cd {0}; bash run.sh {1} {2}; cd {3}".format(
+    cmd = "bash {0}/run.sh {0} {1} {2}".format(
         framework_folder, input_file, output_file, root
     )
+    print(cmd)
     subprocess.Popen(cmd, shell=True).wait()
     R = []
     with open(output_file, "r") as f:

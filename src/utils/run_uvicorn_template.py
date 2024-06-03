@@ -13,5 +13,6 @@ def main():
     args = parser.parse_args()
     uvicorn.run("app.main:app", host=args.host, port=args.port, reload=True, reload_dirs=[framework_folder, os.path.join(root, "app")])
 
+
 if __name__ == "__main__":
     main()
