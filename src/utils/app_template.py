@@ -6,14 +6,17 @@ import csv
 import os
 import tempfile
 import subprocess
-from typing import List, Union, Dict
-from pydantic import RootModel
+import sys
 
 
 root = os.path.dirname(os.path.abspath(__file__))
 bundle_folder = os.path.abspath(os.path.join(root, ".."))
 framework_folder = os.path.abspath(os.path.join(root, "..", "model", "framework"))
 tmp_folder = tempfile.mkdtemp(prefix="ersilia-")
+static_dir = os.path.join(bundle_folder, "static")
+
+sys.path.insert(0, root)
+from input_schema import InputSchema
 
 
 with open(os.path.join(bundle_folder, "info.json"), "r") as f:
@@ -28,22 +31,21 @@ app = FastAPI(
 
 # Root
 
+
 @app.get("/", tags=["Checks"])
 def read_root():
-
     return {info_data["card"]["Identifier"]: info_data["card"]["Slug"]}
 
 
 # Serve the favicon
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    """Get the Ersilia favicon.
-    
-    """
-    return FileResponse(root, 'favicon.ico'))
+    """Get the Ersilia favicon."""
+    return FileResponse(os.path.join(static_dir, "favicon.ico"))
 
 
 # Metadata
+
 
 @app.get("/card", tags=["Metadata"])
 def card():
@@ -122,20 +124,8 @@ def output_header():
         return next(reader)
 
 
-# Model endpoints
-
-# Define the expected request body using Pydantic
-class StringList(RootModel[List[str]]):
-    pass
-
-class DictList(RootModel[List[Dict[str, str]]]):
-    pass
-
-InputList = Union[StringList, DictList]
-
-
 @app.post("/run", tags=["App"])
-async def run(request: InputList = None):
+async def run(request: InputSchema = None):
     """
     Pass a list of inputs to the model. The model will return a list of outputs
 
@@ -143,7 +133,7 @@ async def run(request: InputList = None):
     data = request.root
     # This is for compatibility with previous eos-templates (based on bentoml)
     d0 = data[0]
-    if isinstance(d0, Dict):
+    if isinstance(d0, dict):
         if "input" in d0.keys():
             data = [d["input"] for d in data]
 

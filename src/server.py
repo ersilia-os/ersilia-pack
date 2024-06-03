@@ -22,9 +22,18 @@ class BundleServer(object):
 
     def serve_system(self):
         print("Serving the app from system Python")
-        cmd = "{0} {1}/run_uvicorn.py --host {2} --port {3}".format(sys.executable, self.bundle_path, self.host, self.port)
+        cmd = "{0} {1}/run_uvicorn.py --host {2} --port {3}".format(
+            sys.executable, self.bundle_path, self.host, self.port
+        )
         print(cmd)
-        cmd = [sys.executable, "{0}/run_uvicorn.py".format(self.bundle_path), "--host", self.host, "--port", str(self.port)]
+        cmd = [
+            sys.executable,
+            "{0}/run_uvicorn.py".format(self.bundle_path),
+            "--host",
+            self.host,
+            "--port",
+            str(self.port),
+        ]
         subprocess.run(cmd, check=True)
         print("App served successfully")
 
