@@ -1,12 +1,13 @@
 import os
 import argparse
 import json
-import uvicorn
+import subprocess
+import sys
 
 
 class BundleServer(object):
     def __init__(self, bundle_path, host, port):
-        self.bundle_path = bundle_path
+        self.bundle_path = os.path.abspath(bundle_path)
         self.host = host
         self.port = port
         self.conda = self._is_conda()
@@ -21,13 +22,11 @@ class BundleServer(object):
 
     def serve_system(self):
         print("Serving the app from system Python")
-        uvicorn.run(
-            "app:app",
-            host=self.host,
-            port=self.port,
-            reload=True,
-            app_dir=self.bundle_path,
-        )
+        cmd = "{0} {1}/run_uvicorn.py --host {2} --port {3}".format(sys.executable, self.bundle_path, self.host, self.port)
+        print(cmd)
+        cmd = [sys.executable, "{0}/run_uvicorn.py".format(self.bundle_path), "--host", self.host, "--port", str(self.port)]
+        subprocess.run(cmd, check=True)
+        print("App served successfully")
 
     def serve_conda(self):
         # TODO: Implement the conda environment activation
@@ -53,12 +52,12 @@ def main():
     )
     parser.add_argument(
         "--port",
+        required=True,
         default=8000,
         type=int,
         help="An integer for the port",
     )
     args = parser.parse_args()
-    print(args)
     bs = BundleServer(args.bundle_path, args.host, args.port)
     bs.serve()
 

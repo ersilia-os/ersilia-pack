@@ -34,17 +34,26 @@ class FastApiAppPacker(object):
         return data["Identifier"]
 
     def _create_bundle_structure(self):
+        print("Copying metadata")
         shutil.copy(
             os.path.join(self.dest_dir, "metadata.json"),
             os.path.join(self.bundle_dir, "metadata.json"),
         )
+        print("Copying model")
         shutil.copytree(
             os.path.join(self.dest_dir, "model"), os.path.join(self.bundle_dir, "model")
         )
-        shutil.copy(
-            os.path.join(self.bundle_dir, "metadata.json"),
-            os.path.join(self.bundle_dir, "info.json"),
-        )
+
+    def _get_info_from_metadata(self):
+        print("Getting info from metadata")
+        with open(os.path.join(self.bundle_dir, "metadata.json"), "r") as f:
+            data = json.load(f)
+        info = {}
+        info["card"] = data
+        info["model_id"] = data["Identifier"]
+        with open(os.path.join(self.bundle_dir, "info.json"), "w") as f:
+            json.dump(info, f, indent=4)
+        return info
 
     def _get_api_names(self):
         api_names = []
@@ -55,11 +64,20 @@ class FastApiAppPacker(object):
             raise Exception("No API names found. An API should be a .sh file")
         return api_names
 
-    def _create_app_file(self):
+    def _create_app_files(self):
         api_names = self._get_api_names()
+        if not os.path.exists(os.path.join(self.bundle_dir, "app")):
+            os.makedirs(os.path.join(self.bundle_dir, "app"))
         shutil.copy(
             os.path.join(root, "utils", "app_template.py"),
-            os.path.join(self.bundle_dir, "main.py"),
+            os.path.join(self.bundle_dir, "app", "main.py"),
+        )
+        init_file_path = os.path.join(self.bundle_dir, "app", "__init__.py")
+        with open(init_file_path, "w") as f:
+            pass
+        shutil.copy(
+            os.path.join(root, "utils", "run_uvicorn_template.py"),
+            os.path.join(self.bundle_dir, "run_uvicorn.py"),
         )
         # TODO: It should incorporate all the API endpoints that are necessary (beyond 'run')
 
@@ -69,7 +87,7 @@ class FastApiAppPacker(object):
         if not os.path.exists(dockerfile_path):
             print("Dockerfile does not exist")
             return
-        if os.path.exists(os.path.join(self.dest_dir, "install.sh")):
+        if os.path.exists(os.path.join(self.dest_dir, "installs", "install.sh")):
             print("Install file already exists")
             return
         with open(dockerfile_path) as f:
@@ -78,11 +96,13 @@ class FastApiAppPacker(object):
         for l in lines:
             if l.startswith("RUN"):
                 install_lines += [l[4:]]
-        with open(os.path.join(self.dest_dir, "install.sh"), "w") as f:
+        if not os.path.exists(os.path.join(self.dest_dir, "installs")):
+            os.makedirs(os.path.join(self.dest_dir, "installs"))
+        with open(os.path.join(self.dest_dir, "installs", "install.sh"), "w") as f:
             f.write("\n".join(install_lines))
 
     def _install_packages_system(self):
-        cmd = "bash {0}/install.sh".format(self.dest_dir)
+        cmd = "bash {0}/installs/install.sh".format(self.dest_dir)
         subprocess.Popen(cmd, shell=True).wait()
 
     def _store_environment_mode(self):
@@ -99,8 +119,10 @@ class FastApiAppPacker(object):
 
     def pack(self):
         self._create_bundle_structure()
-        self._create_app_file()
+        self._get_info_from_metadata()
+        self._create_app_files()
         self._convert_dockerfile_to_install_file_if_needed()
+        self._get_info_from_metadata()
         if self.conda:
             self._install_packages_conda()
         else:

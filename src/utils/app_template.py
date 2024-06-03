@@ -1,68 +1,36 @@
-from fastapi import FastAPI, UploadFile, File
-import uvicorn
+from fastapi import FastAPI
 import uuid
 import json
 import csv
 import os
-import argparse
 import tempfile
 import subprocess
 from typing import Optional
 
 root = os.path.dirname(os.path.abspath(__file__))
+bundle_folder = os.path.abspath(os.path.join(root, ".."))
 framework_folder = os.path.join(root, "model", "framework")
 tmp_folder = tempfile.mkdtemp(prefix="ersilia-")
 
-parser = argparse.ArgumentParser(description="ErsiliaAPI app")
 
-parser.add_argument("--port", default=8000, type=int, help="An integer for the port")
-parser.add_argument("--host", default="0.0.0.0", type=str, help="Host URL")
-
-args = parser.parse_args()
-
-with open(os.path.join(root, "metadata.json"), "r") as f:
-    metadata = json.load(f)
+with open(os.path.join(bundle_folder, "info.json"), "r") as f:
+    info_data = json.load(f)
 
 
 app = FastAPI(
-    title="{0}:{1}".format(metadata["Identifier"], metadata["Slug"]),
-    description=metadata["Description"],
+    title="{0}:{1}".format(info_data["card"]["Identifier"], info_data["card"]["Slug"]),
+    description=info_data["card"]["Description"],
     version="latest",
 )
 
+# Read root
 
-# Deployment information. We may want to remove this.
-
-
-@app.get("/framework", tags=["Deployment"])
-def server():
-    """
-    Framework used, in this case, FastAPI
-
-    """
-    return "fastapi"
-
-
-@app.get("/framework", tags=["Deployment"])
-def host():
-    """
-    Host URL
-
-    """
-    return args.host
-
-
-@app.get("/port", tags=["Deployment"])
-def port():
-    """
-    Port
-
-    """
-    return args.port
+@app.get("/", tags=["Checks"])
+def read_root():
+    return {"Hello": "Ersilia"}
 
 
 # Metadata
-
 
 @app.get("/info", tags=["Metadata"])
 def info():
@@ -73,13 +41,22 @@ def info():
     return info_data
 
 
+@app.get("/card", tags=["Metadata"])
+def card():
+    """
+    Get card information
+
+    """
+    return info_data["card"]
+
+
 @app.get("/model_id", tags=["Metadata"])
 def model_id():
     """
     Get model identifier
 
     """
-    return metadata["Identifier"]
+    return info_data["card"]["Identifier"]
 
 
 @app.get("/slug", tags=["Metadata"])
@@ -88,7 +65,7 @@ def slug():
     Get the slug
 
     """
-    return metadata["Slug"]
+    return info_data["card"]["Slug"]
 
 
 @app.get("/input_type", tags=["Metadata"])
@@ -147,7 +124,7 @@ def output_header():
 @app.post("/run", tags=["App"])
 async def run(data: Optional[list] = None):
     """
-    Upload an input file to the server and run predictions or pass a list of inputs and run predictions.
+    Pass a list of inputs to the model. The model will return a list of outputs.
 
     """
     # This is for compatibility with previous eos-templates (based on bentoml)
@@ -176,7 +153,3 @@ async def run(data: Optional[list] = None):
     os.remove(input_file)
     os.remove(output_file)
     return R
-
-
-if __name__ == "__main__":
-    uvicorn.run("main:app", host=args.host, port=args.port, reload=True)

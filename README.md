@@ -25,6 +25,9 @@ This will create a folder with the packed model, and the app available. The app 
 ersilia_model_serve --bundle_path $BUNDLE_PATH
 ```
 
+
+
+
 # Extra thoughts (to be removed)
 
 ## The model repository
