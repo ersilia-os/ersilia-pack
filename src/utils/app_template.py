@@ -20,13 +20,13 @@ parser.add_argument("--host", default="0.0.0.0", type=str, help="Host URL")
 
 args = parser.parse_args()
 
-with open(os.path.join(root, "info.json"), "r") as f:
-    info_data = json.load(f)
+with open(os.path.join(root, "metadata.json"), "r") as f:
+    metadata = json.load(f)
 
 
 app = FastAPI(
-    title="{0}:{1}".format(info_data["card"]["Identifier"], info_data["card"]["Slug"]),
-    description=info_data["card"]["Description"],
+    title="{0}:{1}".format(metadata["Identifier"], metadata["Slug"]),
+    description=metadata["Description"],
     version="latest",
 )
 
@@ -79,7 +79,7 @@ def model_id():
     Get model identifier
 
     """
-    return info_data["card"]["model_id"]
+    return metadata["Identifier"]
 
 
 @app.get("/slug", tags=["Metadata"])
@@ -88,7 +88,7 @@ def slug():
     Get the slug
 
     """
-    return info_data["card"]["slug"]
+    return metadata["Slug"]
 
 
 @app.get("/input_type", tags=["Metadata"])

@@ -4,9 +4,14 @@ import argparse
 
 
 class SimpleModelLinter(object):
-    def __init__(self, model_id, repo_path):
-        self.model_id = model_id
+    def __init__(self, repo_path):
         self.repo_path = repo_path
+        self.model_id = self._get_model_id()
+
+    def _get_model_id(self):
+        with open(os.path.join(self.repo_path, "metadata.json")) as f:
+            data = json.load(f)
+        return data["card"]["Identifier"]
 
     def _check_model_id(self):
         if not self.model_id.startswith("eos") or len(self.model_id) != 7:
@@ -40,11 +45,8 @@ class SimpleModelLinter(object):
 def main():
     parser = argparse.ArgumentParser(description="ErsiliaAPI app")
     parser.add_argument(
-        "--model_id", required=True, type=str, help="Ersilia model identifier"
-    )
-    parser.add_argument(
         "--repo_path", required=True, type=str, help="Path to the model repository"
     )
     args = parser.parse_args()
-    sml = SimpleModelLinter(args.model_id, args.repo_path)
+    sml = SimpleModelLinter(args.repo_path)
     sml.check()

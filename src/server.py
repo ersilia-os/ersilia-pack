@@ -20,6 +20,7 @@ class BundleServer(object):
             return False
 
     def serve_system(self):
+        print("Serving the app from system Python")
         uvicorn.run(
             "app:app",
             host=self.host,
