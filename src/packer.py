@@ -5,6 +5,7 @@ import datetime
 import uuid
 import subprocess
 import json
+import requests
 
 root = os.path.dirname(os.path.abspath(__file__))
 
@@ -33,6 +34,27 @@ class FastApiAppPacker(object):
             data = json.load(f)
         return data["Identifier"]
 
+    def _get_favicon(self):
+        dest_folder = os.path.join(self.bundle_dir, "app")
+        if not os.path.exists(dest_folder):
+            os.makedirs(dest_folder)
+        url = "https://www.ersilia.io/favicon.ico"
+        # Extract the file name from the URL
+        file_name = os.path.basename(url)
+        file_path = os.path.join(dest_folder, file_name)
+
+        # Send a GET request to the URL
+        response = requests.get(url)
+        
+        # Check if the request was successful
+        if response.status_code == 200:
+            # Write the content to the file
+            with open(file_path, 'wb') as file:
+                file.write(response.content)
+            print(f"File downloaded and saved to {file_path}")
+        else:
+            print(f"Failed to download file. Status code: {response.status_code}")
+
     def _create_bundle_structure(self):
         print("Copying metadata")
         shutil.copy(
@@ -43,6 +65,8 @@ class FastApiAppPacker(object):
         shutil.copytree(
             os.path.join(self.dest_dir, "model"), os.path.join(self.bundle_dir, "model")
         )
+        print("Copying the favicon")
+
 
     def _get_info_from_metadata(self):
         print("Getting info from metadata")

@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 import uuid
 import json
 import csv
@@ -25,11 +26,21 @@ app = FastAPI(
     version="latest",
 )
 
-# Read root
+# Root
 
 @app.get("/", tags=["Checks"])
 def read_root():
+
     return {info_data["card"]["Identifier"]: info_data["card"]["Slug"]}
+
+
+# Serve the favicon
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Get the Ersilia favicon.
+    
+    """
+    return FileResponse(root, 'favicon.ico'))
 
 
 # Metadata
