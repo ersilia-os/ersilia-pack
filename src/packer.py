@@ -11,10 +11,9 @@ root = os.path.dirname(os.path.abspath(__file__))
 
 
 class FastApiAppPacker(object):
-    def __init__(self, repo_path, bundles_repo_path, conda):
+    def __init__(self, repo_path, bundles_repo_path):
         self.dest_dir = repo_path
         self.bundles_repo_path = bundles_repo_path
-        self.conda = conda
         if not os.path.exists(self.dest_dir):
             raise Exception("Model path {0} does not exist".format(self.dest_dir))
         self.model_id = self._get_model_id()
@@ -82,7 +81,7 @@ class FastApiAppPacker(object):
         input_shape = self.info["card"]["Input Shape"].lower().replace(" ", "_")
         shutil.copy(
             os.path.join(
-                root, "utils", "input_schemas", input_entity, input_shape + ".py"
+                root, "templates", "input_schemas", input_entity, input_shape + ".py"
             ),
             os.path.join(self.bundle_dir, "app", "input_schema.py"),
         )
@@ -101,17 +100,21 @@ class FastApiAppPacker(object):
         if not os.path.exists(os.path.join(self.bundle_dir, "app")):
             os.makedirs(os.path.join(self.bundle_dir, "app"))
         shutil.copy(
-            os.path.join(root, "utils", "app_template.py"),
+            os.path.join(root, "templates", "app.py"),
             os.path.join(self.bundle_dir, "app", "main.py"),
         )
         init_file_path = os.path.join(self.bundle_dir, "app", "__init__.py")
         with open(init_file_path, "w") as f:
             pass
         shutil.copy(
-            os.path.join(root, "utils", "run_uvicorn_template.py"),
+            os.path.join(root, "templates", "run_uvicorn.py"),
             os.path.join(self.bundle_dir, "run_uvicorn.py"),
         )
         # TODO: It should incorporate all the API endpoints that are necessary (beyond 'run')
+        shutil.copy(
+            os.path.join(root, "templates", "utils.py"),
+            os.path.join(self.bundle_dir, "app", "utils.py"),
+        )
 
     def _convert_dockerfile_to_install_file_if_needed(self):
         # TODO: This method should be improved to handle more complex Dockerfiles
@@ -133,7 +136,7 @@ class FastApiAppPacker(object):
         with open(os.path.join(self.dest_dir, "installs", "install.sh"), "w") as f:
             f.write("\n".join(install_lines))
 
-    def _install_packages_system(self):
+    def _install_packages(self):
         cmd = "bash {0}/installs/install.sh".format(self.dest_dir)
         subprocess.Popen(cmd, shell=True).wait()
 
@@ -157,10 +160,7 @@ class FastApiAppPacker(object):
         self._get_input_schema()
         self._convert_dockerfile_to_install_file_if_needed()
         self._get_info_from_metadata()
-        if self.conda:
-            self._install_packages_conda()
-        else:
-            self._install_packages_system()
+        self._install_packages()
         self._store_environment_mode()
 
 
@@ -175,11 +175,8 @@ def main():
         type=str,
         help="Path to the repository where bundles are stored",
     )
-    parser.add_argument(
-        "--conda", action="store_true", help="Flag to indicate whether to use conda"
-    )
     args = parser.parse_args()
-    fp = FastApiAppPacker(args.repo_path, args.bundles_repo_path, args.conda)
+    fp = FastApiAppPacker(args.repo_path, args.bundles_repo_path)
     fp.pack()
 
 

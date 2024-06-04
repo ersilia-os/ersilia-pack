@@ -3,14 +3,23 @@ import argparse
 import json
 import subprocess
 import sys
+from .utils import find_free_port
 
 
 class BundleServer(object):
     def __init__(self, bundle_path, host, port):
         self.bundle_path = os.path.abspath(bundle_path)
+        self._resolve_bundle_path()
         self.host = host
+        if port is None:
+            port = find_free_port(self.host)
         self.port = port
         self.conda = self._is_conda()
+
+    def _resolve_bundle_path(self):
+        subfolders = os.listdir(self.bundle_path)
+        if len(subfolders) == 1 and os.path.isdir(os.path.join(self.bundle_path, subfolders[0])):
+            self.bundle_path = os.path.join(self.bundle_path, subfolders[0])
 
     def _is_conda(self):
         with open(os.path.join(self.bundle_path, "environment_mode.json")) as f:
@@ -61,8 +70,7 @@ def main():
     )
     parser.add_argument(
         "--port",
-        required=True,
-        default=8000,
+        default=None,
         type=int,
         help="An integer for the port",
     )

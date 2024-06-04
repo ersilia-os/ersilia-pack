@@ -19,13 +19,13 @@ class SimpleModelLinter(object):
 
     def _check_examples(self):
         if not os.path.exists(
-            os.path.join(self.repo_path, "model", "framework", "example_input.csv")
+            os.path.join(self.repo_path, "model", "framework", "example.csv")
         ):
-            raise Exception("example_input.csv not found")
+            raise Exception("example.csv not found")
         if not os.path.exists(
-            os.path.join(self.repo_path, "model", "framework", "example_output.csv")
+            os.path.join(self.repo_path, "model", "framework", "output.csv")
         ):
-            raise Exception("example_output.csv not found")
+            raise Exception("output.csv not found")
 
     def _check_metadata(self):
         if not os.path.exists(os.path.join(self.repo_path, "metadata.json")):
