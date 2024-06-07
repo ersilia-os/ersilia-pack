@@ -61,13 +61,17 @@ class FastApiAppPacker(object):
         )
         print("Copying the favicon")
 
-    def _get_info_from_metadata(self):
+    def _get_info(self):
         print("Getting info from metadata")
         with open(os.path.join(self.bundle_dir, "metadata.json"), "r") as f:
             data = json.load(f)
         info = {}
-        info["card"] = data
         info["model_id"] = data["Identifier"]
+        info["slug"] = data["Slug"]
+        api_list = self._get_api_names_from_sh()
+        if api_list is None:
+            api_list = self._get_api_names_from_artifact()
+        info["api_list"] = api_list
         with open(os.path.join(self.bundle_dir, "info.json"), "w") as f:
             json.dump(info, f, indent=4)
         self.info = info
@@ -96,6 +100,7 @@ class FastApiAppPacker(object):
         return api_names
     
     def _get_api_names_from_artifact(self):
+        # TODO: Implement this method
         api_names = []
         return api_names
 
@@ -166,12 +171,11 @@ class FastApiAppPacker(object):
     def pack(self):
         self._create_bundle_structure()
         self._get_favicon()
-        self._get_info_from_metadata()
         self._create_app_files()
         self._edit_post_commands_app()
         self._get_input_schema()
         self._convert_dockerfile_to_install_file_if_needed()
-        self._get_info_from_metadata()
+        self._get_info()
         self._install_packages()
 
 
