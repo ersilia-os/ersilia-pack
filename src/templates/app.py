@@ -159,51 +159,8 @@ def columns_output():
     Get the header of the output
 
     """
-    with open(os.path.join(framework_folder, "example_output.csv"), "r") as f:
+    with open(os.path.join(framework_folder, "output.csv"), "r") as f:
         reader = csv.reader(f)
         return next(reader)
 
-
-@app.post("/run", tags=["App"])
-async def run(request: InputSchema = Body(..., example=exemplary_input), orient: OrientEnum = Query(OrientEnum.records)):
-    """
-    Make a request to the model.
-
-    """
-
-    if request is None:
-        raise HTTPException(status_code=400, detail="Request body cannot be empty")
-
-    data = request
-
-    # Backwards compatibility with previous eos-template service versions where [{"input": "value"}] was used.
-    d0 = data[0]
-    if isinstance(d0, dict):
-        if "input" in d0.keys():
-            data = [d["input"] for d in data]
-
-    tag = str(uuid.uuid4())
-    input_file = "{0}/{1}".format(tmp_folder, "input-{0}.csv".format(tag))
-    with open(input_file, "w") as f:
-        writer = csv.writer(f)
-        writer.writerow(["input"])
-        for r in data:
-            writer.writerow([r])
-    output_file = "{0}/{1}".format(tmp_folder, "output-{0}.csv".format(tag))
-    cmd = "bash {0}/run.sh {0} {1} {2}".format(
-        framework_folder, input_file, output_file, root
-    )
-    print(cmd)
-    subprocess.Popen(cmd, shell=True).wait()
-    R = []
-    with open(output_file, "r") as f:
-        reader = csv.reader(f)
-        header = next(reader)
-        for r in reader:
-            R += [r]
-    os.remove(input_file)
-    os.remove(output_file)
-    response = orient_to_json(R, header, data, orient)
-    return response
-
-
+# Post commands

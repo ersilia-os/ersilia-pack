@@ -86,7 +86,7 @@ class FastApiAppPacker(object):
             os.path.join(self.bundle_dir, "app", "input_schema.py"),
         )
 
-    def _get_api_names(self):
+    def _get_api_names_from_sh(self):
         api_names = []
         for l in os.listdir(os.path.join(self.bundle_dir, "model", "framework")):
             if l.endswith(".sh"):
@@ -94,9 +94,12 @@ class FastApiAppPacker(object):
         if len(api_names) == 0:
             raise Exception("No API names found. An API should be a .sh file")
         return api_names
+    
+    def _get_api_names_from_artifact(self):
+        api_names = []
+        return api_names
 
     def _create_app_files(self):
-        api_names = self._get_api_names()
         if not os.path.exists(os.path.join(self.bundle_dir, "app")):
             os.makedirs(os.path.join(self.bundle_dir, "app"))
         shutil.copy(
@@ -110,11 +113,31 @@ class FastApiAppPacker(object):
             os.path.join(root, "templates", "run_uvicorn.py"),
             os.path.join(self.bundle_dir, "run_uvicorn.py"),
         )
-        # TODO: It should incorporate all the API endpoints that are necessary (beyond 'run')
         shutil.copy(
             os.path.join(root, "templates", "utils.py"),
             os.path.join(self.bundle_dir, "app", "utils.py"),
         )
+
+    def _edit_post_commands_app(self):
+        api_names = self._get_api_names_from_sh()
+        if len(api_names) > 0:
+            with open(os.path.join(self.bundle_dir, "app", "main.py"), "r") as f:
+                lines = f.readlines()
+                lines += ["\n"]
+                body_txt = "\n".join(lines)
+                for api_name in api_names:
+                    with open(os.path.join(root, "templates", "post_code_chunks", "sh_files.txt"), "r") as g:
+                        txt = g.read()
+                        txt = txt.replace("$$$API_NAME$$$", api_name)
+                    txt += "\n"
+                    body_txt += txt
+            with open(os.path.join(self.bundle_dir, "app", "main.py"), "w") as f:
+                f.write(body_txt)
+            return
+        api_names = self._get_api_names_from_artifact()
+        if len(api_names) > 0:
+            print("API names from artifact")
+            # TODO
 
     def _convert_dockerfile_to_install_file_if_needed(self):
         # TODO: This method should be improved to handle more complex Dockerfiles
@@ -140,28 +163,16 @@ class FastApiAppPacker(object):
         cmd = "bash {0}/installs/install.sh".format(self.dest_dir)
         subprocess.Popen(cmd, shell=True).wait()
 
-    def _store_environment_mode(self):
-        if self.conda:
-            data = {"mode": "conda"}
-        else:
-            data = {"mode": "system"}
-        with open(os.path.join(self.bundle_dir, "environment_mode.json"), "w") as f:
-            f.write(json.dumps(data))
-
-    def _install_packages_conda(self):
-        # TODO: Implement this method
-        pass
-
     def pack(self):
         self._create_bundle_structure()
         self._get_favicon()
         self._get_info_from_metadata()
         self._create_app_files()
+        self._edit_post_commands_app()
         self._get_input_schema()
         self._convert_dockerfile_to_install_file_if_needed()
         self._get_info_from_metadata()
         self._install_packages()
-        self._store_environment_mode()
 
 
 def main():

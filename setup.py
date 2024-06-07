@@ -7,6 +7,9 @@ setup(
     install_requires=[
         "fastapi",
     ],
+    package_data={
+        "": ["*.txt"],
+    },
     entry_points={
         "console_scripts": [
             "ersilia_model_pack=src.packer:main",
