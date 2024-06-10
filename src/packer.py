@@ -66,6 +66,7 @@ class FastApiAppPacker(object):
         with open(os.path.join(self.bundle_dir, "metadata.json"), "r") as f:
             data = json.load(f)
         info = {}
+        info["card"] = data
         info["model_id"] = data["Identifier"]
         info["slug"] = data["Slug"]
         api_list = self._get_api_names_from_sh()
@@ -173,9 +174,9 @@ class FastApiAppPacker(object):
         self._get_favicon()
         self._create_app_files()
         self._edit_post_commands_app()
+        self._get_info()
         self._get_input_schema()
         self._convert_dockerfile_to_install_file_if_needed()
-        self._get_info()
         self._install_packages()
 
 
