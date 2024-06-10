@@ -7,8 +7,11 @@ setup(
     install_requires=[
         "fastapi",
     ],
-    package_data={
-        "": ["*.txt"],
+    package_data={"": [
+            "templates/*.py", 
+            "templates/input_schemas/*/*.py",
+            "templates/*/*.txt"
+        ]
     },
     entry_points={
         "console_scripts": [
