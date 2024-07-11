@@ -5,13 +5,15 @@ import datetime
 import uuid
 import subprocess
 import json
+import yaml
 import urllib.request
+from .parsers import InstallParser, MetadataYml2JsonConverter
 
 root = os.path.dirname(os.path.abspath(__file__))
 
 
 class FastApiAppPacker(object):
-    def __init__(self, repo_path, bundles_repo_path):
+    def __init__(self, repo_path, bundles_repo_path, conda_env_name=None):
         self.dest_dir = repo_path
         self.bundles_repo_path = bundles_repo_path
         if not os.path.exists(self.dest_dir):
@@ -27,11 +29,23 @@ class FastApiAppPacker(object):
             shutil.rmtree(self.bundle_dir)
         self.bundle_dir = os.path.join(self.bundle_dir, timestamp)
         os.makedirs(self.bundle_dir)
+        if not os.path.exists(os.path.join(self.bundle_dir, "installs")):
+            os.makedirs(os.path.join(self.bundle_dir, "installs"))
+        self.sh_file = os.path.join(self.bundle_dir, "installs", "install.sh")
+        self.conda_env_name = conda_env_name
 
     def _get_model_id(self):
-        with open(os.path.join(self.dest_dir, "metadata.json")) as f:
-            data = json.load(f)
-        return data["Identifier"]
+        json_file = os.path.join(self.dest_dir, "metadata.json")
+        if os.path.exists(json_file):
+            with open(json_file, "r") as f:
+                data = json.load(f)
+                return data["Identifier"]
+        yml_file = os.path.join(self.dest_dir, "metadata.yml")
+        if os.path.exists(yml_file):
+            with open(yml_file, "r") as f:
+                data = yaml.safe_load(f)
+                return data["Identifier"]
+        raise Exception("No metadata file found")
 
     def _get_favicon(self):
         dest_folder = os.path.join(self.bundle_dir, "static")
@@ -50,21 +64,27 @@ class FastApiAppPacker(object):
             print(f"Failed to download file. Error: {e}")
 
     def _create_bundle_structure(self):
-        print("Copying metadata")
-        shutil.copy(
-            os.path.join(self.dest_dir, "metadata.json"),
-            os.path.join(self.bundle_dir, "metadata.json"),
-        )
         print("Copying model")
         shutil.copytree(
             os.path.join(self.dest_dir, "model"), os.path.join(self.bundle_dir, "model")
         )
         print("Copying the favicon")
 
+    def _load_metadata(self):
+        json_file = os.path.join(self.dest_dir, "metadata.json")
+        if os.path.exists(json_file):
+            with open(json_file, "r") as f:
+                data = json.load(f)
+                return data
+        yml_file = os.path.join(self.dest_dir, "metadata.yml")
+        if os.path.exists(yml_file):
+            data = MetadataYml2JsonConverter(yml_file).convert()
+            return data
+        raise Exception("No metadata file found")
+
     def _get_info(self):
         print("Getting info from metadata")
-        with open(os.path.join(self.bundle_dir, "metadata.json"), "r") as f:
-            data = json.load(f)
+        data = self._load_metadata()
         info = {}
         info["card"] = data
         info["model_id"] = data["Identifier"]
@@ -145,14 +165,11 @@ class FastApiAppPacker(object):
             print("API names from artifact")
             # TODO
 
-    def _convert_dockerfile_to_install_file_if_needed(self):
+    def _convert_dockerfile_to_install_file(self):
         # TODO: This method should be improved to handle more complex Dockerfiles
         dockerfile_path = os.path.join(self.dest_dir, "Dockerfile")
         if not os.path.exists(dockerfile_path):
             print("Dockerfile does not exist")
-            return
-        if os.path.exists(os.path.join(self.dest_dir, "installs", "install.sh")):
-            print("Install file already exists")
             return
         with open(dockerfile_path) as f:
             lines = f.readlines()
@@ -160,13 +177,28 @@ class FastApiAppPacker(object):
         for l in lines:
             if l.startswith("RUN"):
                 install_lines += [l[4:]]
-        if not os.path.exists(os.path.join(self.dest_dir, "installs")):
-            os.makedirs(os.path.join(self.dest_dir, "installs"))
-        with open(os.path.join(self.dest_dir, "installs", "install.sh"), "w") as f:
+        with open(self.sh_file, "w") as f:
             f.write("\n".join(install_lines))
 
+    def _has_install_yml(self):
+        return os.path.exists(os.path.join(self.dest_dir, "install.yml"))
+    
+    def _has_dockerfile(self):
+        return os.path.exists(os.path.join(self.dest_dir, "Dockerfile"))
+
+    def _convert_install_yml_to_install_file(self):
+        yml_path = os.path.join(self.dest_dir, "install.yml")
+        if not os.path.exists(yml_path):
+            print("Installs YAML does not exist")
+            return
+        if os.path.exists(self.sh_file):
+            print("Install file already exists")
+            return
+        ymlparser = InstallParser(yml_path, conda_env_name=self.conda_env_name)
+        ymlparser.write_bash_script(self.sh_file)
+
     def _install_packages(self):
-        cmd = "bash {0}/installs/install.sh".format(self.dest_dir)
+        cmd = f"bash {self.sh_file}"
         subprocess.Popen(cmd, shell=True).wait()
 
     def pack(self):
@@ -176,7 +208,13 @@ class FastApiAppPacker(object):
         self._edit_post_commands_app()
         self._get_info()
         self._get_input_schema()
-        self._convert_dockerfile_to_install_file_if_needed()
+        if self._has_install_yml():
+            self._convert_install_yml_to_install_file()
+        elif self._has_dockerfile():
+            self._convert_dockerfile_to_install_file()
+        else:
+            print("No install file found. Proceeding anyway")
+            pass
         self._install_packages()
 
 
@@ -191,8 +229,15 @@ def main():
         type=str,
         help="Path to the repository where bundles are stored",
     )
+    parser.add_argument(
+        "--conda_env_name",
+        required=False,
+        type=str,
+        default=None,
+        help="Name of the conda environment to use. This is optional",
+    )
     args = parser.parse_args()
-    fp = FastApiAppPacker(args.repo_path, args.bundles_repo_path)
+    fp = FastApiAppPacker(args.repo_path, args.bundles_repo_path, args.conda_env_name)
     fp.pack()
 
 
