@@ -1,7 +1,7 @@
 import collections
 
 
-def orient_to_json(values, columns, index, orient):
+def orient_to_json(values, columns, index, orient, output_type):
     """
     Convert results to the desired orientation in JSON format
 
@@ -20,11 +20,32 @@ def orient_to_json(values, columns, index, orient):
         The converted data in the desired orientation.
 
     """
+    
+    if len(output_type) > 1:
+        output_type = "string"
+    else:
+        output_type = output_type[0].lower()
+
+    print("output_type", output_type)
+
+    def values_serializer(values):
+        if output_type == "string":
+            print("A")
+            return [str(x) for x in values]
+        if output_type == "float":
+            print("B")
+            return [float(x) for x in values]
+        if output_type == "integer":
+            print("C")
+            return [int(x) for x in values]
+        print("D")
+        return values
+
     if orient == "split":
         data = collections.OrderedDict()
         data["columns"] = columns
         data["index"] = index
-        data["data"] = values
+        data["data"] = values_serializer(values)
         return data
 
     if orient == "records":
@@ -32,7 +53,7 @@ def orient_to_json(values, columns, index, orient):
         for i in range(len(values)):
             record = collections.OrderedDict()
             for j in range(len(columns)):
-                record[columns[j]] = values[i][j]
+                record[columns[j]] = values_serializer([values[i][j]])[0]
             data += [record]
         return data
     
@@ -41,7 +62,7 @@ def orient_to_json(values, columns, index, orient):
         for i in range(len(index)):
             record = collections.OrderedDict()
             for j in range(len(columns)):
-                record[columns[j]] = values[i][j]
+                record[columns[j]] = values_serializer([values[i][j]])[0]
             data[index[i]] = record
         return data
         
@@ -50,11 +71,11 @@ def orient_to_json(values, columns, index, orient):
         for j in range(len(columns)):
             records = collections.OrderedDict()
             for i in range(len(index)):
-                records[index[i]] = values[i][j]
+                records[index[i]] = values_serializer([values[i][j]])[0]
             data[columns[j]] = records
         return data
 
     elif orient == "values":
-        return values
+        return values_serializer(values)
         
     return None

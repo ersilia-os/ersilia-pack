@@ -37,5 +37,5 @@ async def $$$API_NAME$$$(request: InputSchema = Body(..., example=exemplary_inpu
             R += [r]
     os.remove(input_file)
     os.remove(output_file)
-    response = orient_to_json(R, header, data, orient)
+    response = orient_to_json(R, header, data, orient, output_type)
     return response
