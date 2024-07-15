@@ -1,5 +1,6 @@
 @app.post("/$$$API_NAME$$$", tags=["App"])
-async def $$$API_NAME$$$(request: InputSchema = Body(..., example=exemplary_input), orient: OrientEnum = Query(OrientEnum.records)):
+# async def $$$API_NAME$$$(request: InputSchema = Body(..., example=exemplary_input), orient: OrientEnum = Query(OrientEnum.records)): # TODO put back
+async def $$$API_NAME$$$(request: InputSchema = Body(...), orient: OrientEnum = Query(OrientEnum.records)):
     """
     Make a request to the model.
 
