@@ -26,19 +26,13 @@ def orient_to_json(values, columns, index, orient, output_type):
     else:
         output_type = output_type[0].lower()
 
-    print("output_type", output_type)
-
     def values_serializer(values):
         if output_type == "string":
-            print("A")
             return [str(x) for x in values]
         if output_type == "float":
-            print("B")
             return [float(x) for x in values]
         if output_type == "integer":
-            print("C")
             return [int(x) for x in values]
-        print("D")
         return values
 
     if orient == "split":
