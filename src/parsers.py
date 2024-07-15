@@ -55,7 +55,7 @@ class InstallParser(object):
             lines = conda_lines + lines
             txt = '''
                 current_env=$(conda info --envs | grep '*' | awk '{print $1}')
-                if [ "$current_env" == "" ]; then
+                if [ -z "$current_env" ]; then
                     current_env="base"
                     conda activate base
                 if [ "$current_env" == "base" ]; then
