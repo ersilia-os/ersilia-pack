@@ -110,7 +110,7 @@ def example_input():
 
     """
     input_list = []
-    with open(os.path.join(framework_folder, "examples", "run_input.csv"), "r") as f:
+    with open(os.path.join(framework_folder, "examples", "input.csv"), "r") as f:
         reader = csv.reader(f)
         next(reader)
         for r in reader:
@@ -125,13 +125,13 @@ def example_output(orient: OrientEnum = Query(OrientEnum.records)):
 
     """
     output_list = []
-    with open(os.path.join(framework_folder, "example", "run_output.csv"), "r") as f:
+    with open(os.path.join(framework_folder, "examples", "output.csv"), "r") as f:
         reader = csv.reader(f)
         columns = next(reader)
         for r in reader:
             output_list += [r]
 
-    with open(os.path.join(framework_folder, "example", "run_output.csv"), "r") as f:
+    with open(os.path.join(framework_folder, "examples", "output.csv"), "r") as f:
         reader = csv.reader(f)
         next(reader)
         index = []
@@ -148,7 +148,7 @@ def columns_input():
     Get the header of the input
 
     """
-    with open(os.path.join(framework_folder, "example", "run_input.csv"), "r") as f:
+    with open(os.path.join(framework_folder, "examples", "input.csv"), "r") as f:
         reader = csv.reader(f)
         return next(reader)
 
@@ -159,7 +159,7 @@ def columns_output():
     Get the header of the output
 
     """
-    with open(os.path.join(framework_folder, "example", "run_output.csv"), "r") as f:
+    with open(os.path.join(framework_folder, "examples", "output.csv"), "r") as f:
         reader = csv.reader(f)
         return next(reader)
 

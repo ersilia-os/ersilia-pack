@@ -149,6 +149,7 @@ class FastApiAppPacker(object):
         if len(api_names) > 0:
             with open(os.path.join(self.bundle_dir, "app", "main.py"), "r") as f:
                 lines = f.readlines()
+                lines = [l.rstrip("\n") for l in lines]
                 lines += ["\n"]
                 body_txt = "\n".join(lines)
                 for api_name in api_names:
