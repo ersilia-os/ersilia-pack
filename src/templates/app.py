@@ -17,6 +17,7 @@ tmp_folder = tempfile.mkdtemp(prefix="ersilia-")
 static_dir = os.path.join(bundle_folder, "static")
 
 sys.path.insert(0, root)
+from input_schema import InputSchema, exemplary_input
 from utils import orient_to_json
 
 
