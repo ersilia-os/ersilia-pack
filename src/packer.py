@@ -93,7 +93,7 @@ class FastApiAppPacker(object):
         if api_list is None:
             api_list = self._get_api_names_from_artifact()
         info["api_list"] = api_list
-        with open(os.path.join(self.bundle_dir, "info.json"), "w") as f:
+        with open(os.path.join(self.bundle_dir, "information.json"), "w") as f:
             json.dump(info, f, indent=4)
         self.info = info
 

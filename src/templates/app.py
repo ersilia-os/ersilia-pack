@@ -21,7 +21,7 @@ from input_schema import InputSchema, exemplary_input
 from utils import orient_to_json
 
 
-with open(os.path.join(bundle_folder, "info.json"), "r") as f:
+with open(os.path.join(bundle_folder, "information.json"), "r") as f:
     info_data = json.load(f)
 
 output_type = info_data["card"]["Output Type"]
