@@ -86,9 +86,9 @@ class FastApiAppPacker(object):
         print("Getting info from metadata")
         data = self._load_metadata()
         info = {}
-        info["card"] = data
+        info["Card"] = data
         info["model_id"] = data["Identifier"]
-        info["slug"] = data["Slug"]
+        info["Slug"] = data["Slug"]
         api_list = self._get_api_names_from_sh()
         if api_list is None:
             api_list = self._get_api_names_from_artifact()
