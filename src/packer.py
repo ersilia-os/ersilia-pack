@@ -103,7 +103,7 @@ class FastApiAppPacker(object):
         if len(input_entity) > 1:
             return
         input_entity = input_entity[0].lower().replace(" ", "_")
-        input_shape = self.info["card"]["Input Shape"].lower().replace(" ", "_")
+        input_shape = self.info["Card"]["Input Shape"].lower().replace(" ", "_")
         shutil.copy(
             os.path.join(
                 root, "templates", "input_schemas", input_entity, input_shape + ".py"
