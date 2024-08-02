@@ -99,7 +99,7 @@ class FastApiAppPacker(object):
 
     def _get_input_schema(self):
         print(self.info)
-        input_entity = self.info["card"]["Input"]
+        input_entity = self.info["Card"]["Input"]
         if len(input_entity) > 1:
             return
         input_entity = input_entity[0].lower().replace(" ", "_")
