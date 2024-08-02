@@ -58,6 +58,7 @@ class InstallParser(object):
                 if [ -z "$current_env" ]; then
                     current_env="base"
                     conda activate base
+                fi
                 if [ "$current_env" == "base" ]; then
                     conda_prefix=$CONDA_PREFIX
                 else
@@ -65,7 +66,7 @@ class InstallParser(object):
                 fi
                 '''
             txt = textwrap.dedent(txt) + os.linesep
-        txt += os.linesep.join(lines + ["\n"])
+        txt += os.linesep.join(lines)
         return txt
     
     def write_bash_script(self, file_name=None):
