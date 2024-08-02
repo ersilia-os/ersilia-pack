@@ -65,7 +65,7 @@ class InstallParser(object):
                 fi
                 '''
             txt = textwrap.dedent(txt) + os.linesep
-        txt += os.linesep.join(lines)
+        txt += os.linesep.join(lines + ["\n"])
         return txt
     
     def write_bash_script(self, file_name=None):
