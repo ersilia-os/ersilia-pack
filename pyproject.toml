@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ersilia-pack"
+version = "1.0.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "fastapi",
+    "PyYAML",
+    "uvicorn[standard]",
+    "loguru"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"" = ["templates/*.py", "templates/input_schemas/*/*.py", "templates/*/*.txt"]
+
+[project.scripts]
+ersilia_model_pack = "src.packer:main"
+ersilia_model_serve = "src.server:main"
+ersilia_model_lint = "src.linter:main"
