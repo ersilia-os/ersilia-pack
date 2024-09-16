@@ -1,37 +1,45 @@
+# TODO Refactor this file to make a sub-package instead of having each class in a single file
+import re
 import yaml
 import os
 import collections
 import json
 import textwrap
 
-
-class InstallParser(object):
+class InstallParser:
     def __init__(self, file_name, conda_env_name=None):
         self.conda_env_name = conda_env_name
         self.file_name = file_name
-        with open(self.file_name, 'r') as file:
-            self.data = yaml.safe_load(file)
-        if type(self.data["python"]) != str:
-            raise ValueError("Python version must be a string")
+        self.python_version = self._get_python_version()
 
     def _get_python_version(self):
-        return self.data["python"]
+        raise NotImplementedError("Implement this in sub-class")
     
     def _get_commands(self):
-        # TODO make it more sophisticate for multiple platforms or command types
-        return self.data["commands"]
-        
+        raise NotImplementedError("Implement this in sub-class")
+    
+    @staticmethod
+    def _has_conda(commands):
+        for command in commands:
+            if type(command) is list and command[0] == "conda":
+                return True
+        return False
+    
     def _convert_commands_to_bash_script(self):
         lines = []
-        has_conda = False
-        for command in self._get_commands():
+        commands = self._get_commands()
+        has_conda = self._has_conda(commands)
+        print("Has conda", has_conda)
+        for command in commands:
             if type(command) is list:
                 if command[0] == "pip":
                     assert len(command) == 3, "pip command must have 3 arguments"
-                    cmd = "pip install " + command[1] + "==" + command[2]
+                    if has_conda:
+                        cmd = "$conda_prefix/bin/python -m pip install " + command[1] + "==" + command[2]
+                    else:
+                        cmd = "python -m pip install " + command[1] + "==" + command[2]
                 elif command[0] == "conda":
                     assert len(command) == 4, "conda command must have 4 arguments"
-                    has_conda = True
                     if command[3] == "default":
                         cmd = "conda install " + command[1] + "=" + command[2]
                     else:
@@ -64,6 +72,10 @@ class InstallParser(object):
                 else
                     conda_prefix=$CONDA_PREFIX_1
                 fi
+                echo $current_env
+                echo $CONDA_PREFIX
+                echo $CONDA_PREFIX_1
+                echo $conda_prefix
                 '''
             txt = textwrap.dedent(txt) + os.linesep
         txt += os.linesep.join(lines)
@@ -75,8 +87,99 @@ class InstallParser(object):
         with open(file_name, 'w') as file:
             file.write(self._convert_commands_to_bash_script())
 
+    def check_file_exists(self):
+        return os.path.exists(self.file_name)
+    
 
-class MetadataYml2JsonConverter(object):
+class YAMLInstallParser(InstallParser):
+    def __init__(self, file_dir, conda_env_name=None):
+        self.file_type = "install.yml"
+        file_name = os.path.join(file_dir, self.file_type)
+        super().__init__(file_name, conda_env_name)
+    
+    def _get_python_version(self):
+        with open(self.file_name, 'r') as file:
+            self.data = yaml.safe_load(file)
+        if type(self.data["python"]) != str:
+            raise ValueError("Python version must be a string")
+        return self.data["python"]
+    
+    def _get_commands(self):
+        return self.data["commands"]
+
+class DockerfileInstallParser(InstallParser):
+    def __init__(self, file_dir, conda_env_name=None):
+        self.file_type = "Dockerfile"
+        file_name = os.path.join(file_dir, self.file_type)
+        super().__init__(file_name, conda_env_name)
+    
+    def _get_python_version(self):
+        with open(self.file_name) as f:
+            lines = f.readlines()
+        for l in lines:
+            if l.startswith("FROM"):
+                m = re.search(r"py(\d+)", l)
+                if m:
+                    version = m.group(1).strip('py')
+                    version = version[0] + "." + version[1:]
+                    return version
+        raise ValueError("Python version not found in Dockerfile")
+
+    @staticmethod
+    def _process_pip_command(command):
+        parts = command.split()
+        if len(parts) < 3 or parts[0] != 'pip' or parts[1] != 'install':
+            raise ValueError("Invalid format. Expected 'pip install package[==version]'")
+        
+        package_info = parts[2].split('==')
+        if len(package_info) == 2:
+            package, version = package_info
+            return [parts[0], package, version]
+        else:
+            package = package_info[0]
+            return [parts[0], package]
+    
+    @staticmethod
+    def _process_conda_command(command):
+        parts = command.split()
+        if len(parts) < 3 or parts[0] != 'conda' or parts[1] != 'install':
+            raise ValueError("Invalid format. Expected 'conda install [-c channel] package[==version|=version]'")
+        
+        # Handle the case where no channel is given
+        if len(parts) == 3:
+            package_info = re.split(r'==|=', parts[2]) # Package version can be separated by == or =
+            if len(package_info) == 2:
+                package, version = package_info
+                return ["conda", package, version, "default"]
+            else:
+                package = package_info[0]
+                return ["conda", package, "default"]
+        
+        # Handle the case where a channel is given
+        package_info = re.split(r'==|=', parts[4])
+        if len(package_info) == 2:
+            package, version = package_info
+            return [parts[0], package, version, parts[3]]
+        else:
+            package = package_info[0]
+            return [parts[0], package, parts[3]]
+
+    def _get_commands(self):
+        with open(self.file_name) as f:
+            lines = f.readlines()
+        commands = []
+        for l in lines:
+            if l.startswith("RUN"):
+                l = l.strip("RUN").strip()
+                if l.startswith("pip"):
+                    commands.append(self._process_pip_command(l))
+                elif l.startswith("conda"):
+                    commands.append(self._process_conda_command(l))
+                else:
+                    commands.append(l)
+        return commands
+
+class MetadataYml2JsonConverter:
 
     def __init__(self, yml_file, json_file=None):
         self.yml_file = yml_file
@@ -133,7 +236,7 @@ class MetadataYml2JsonConverter(object):
             f.write(json.dumps(data, indent=4))
 
 if __name__ == "__main__":
-    parser = InstallParser("/Users/mduranfrigola/Documents/GitHub/eos-template-2/install.yml")
+    parser = DockerfileInstallParser("/home/dee/ersilia-project/models-test/eos3nn9")
     parser.write_bash_script()
     #converter = MetadataYml2JsonConverter("metadata.yml", "metadata.json")
     #converter.convert()
