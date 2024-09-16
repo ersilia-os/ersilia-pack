@@ -190,6 +190,17 @@ class FastApiAppPacker(object):
         cmd = f"bash {self.sh_file}"
         subprocess.Popen(cmd, shell=True).wait()
 
+    def _modify_python_exe(self):
+        python_exe = self.install_writer.get_python_exe()
+        with open(os.path.join(self.bundle_dir, "model", "framework", "run.sh"), "r") as f:
+            lines = f.readlines()
+        lines = [l.rstrip(os.linesep) for l in lines]
+        for i, l in enumerate(lines):
+            if l.startswith("python"):
+                lines[i] = l.replace("python", python_exe)
+        with open(os.path.join(self.bundle_dir, "model", "framework", "run.sh"), "w") as f:
+            f.write(os.linesep.join(lines))
+
     def pack(self):
         self._create_bundle_structure()
         self._get_favicon()
@@ -199,6 +210,7 @@ class FastApiAppPacker(object):
         self._get_input_schema()
         self._write_install_file()
         self._install_packages()
+        self._modify_python_exe()
 
 
 def main():
