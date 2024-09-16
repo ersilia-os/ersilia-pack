@@ -29,13 +29,12 @@ class InstallParser:
         lines = []
         commands = self._get_commands()
         has_conda = self._has_conda(commands)
-        print("Has conda", has_conda)
         for command in commands:
             if type(command) is list:
                 if command[0] == "pip":
                     assert len(command) == 3, "pip command must have 3 arguments"
                     if has_conda:
-                        cmd = "$conda_prefix/bin/python -m pip install " + command[1] + "==" + command[2]
+                        cmd = "$python_exe -m pip install " + command[1] + "==" + command[2]
                     else:
                         cmd = "python -m pip install " + command[1] + "==" + command[2]
                 elif command[0] == "conda":
@@ -54,28 +53,18 @@ class InstallParser:
         if has_conda:
             if self.conda_env_name is None:
                 conda_env_name = "base"
+                python_exe = "python_exe=$conda_prefix/bin/python"
             else:
                 conda_env_name = self.conda_env_name
+                python_exe = f"python_exe=$conda_prefix/envs/{conda_env_name}/bin/python"
             conda_lines = [
                 "source $conda_prefix/etc/profile.d/conda.sh",
                 "conda activate " + conda_env_name
             ]
-            lines = conda_lines + lines
+            lines = [python_exe] + conda_lines + lines
             txt = '''
-                current_env=$(conda info --envs | grep '*' | awk '{print $1}')
-                if [ -z "$current_env" ]; then
-                    current_env="base"
-                    conda activate base
-                fi
-                if [ "$current_env" == "base" ]; then
-                    conda_prefix=$CONDA_PREFIX
-                else
-                    conda_prefix=$CONDA_PREFIX_1
-                fi
-                echo $current_env
-                echo $CONDA_PREFIX
-                echo $CONDA_PREFIX_1
-                echo $conda_prefix
+                #!/bin/bash
+                conda_prefix=${CONDA_EXE%/bin/conda}
                 '''
             txt = textwrap.dedent(txt) + os.linesep
         txt += os.linesep.join(lines)
