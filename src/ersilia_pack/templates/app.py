@@ -24,13 +24,11 @@ from utils import orient_to_json
 with open(os.path.join(bundle_folder, "information.json"), "r") as f:
     info_data = json.load(f)
 
-output_type = info_data["card"]["Output Type"]
-print("here", output_type)
-
+output_type = info_data["Card"]["Output Type"]
 
 app = FastAPI(
-    title="{0}:{1}".format(info_data["card"]["Identifier"], info_data["card"]["Slug"]),
-    description=info_data["card"]["Description"],
+    title="{0}:{1}".format(info_data["Card"]["Identifier"], info_data["Card"]["Slug"]),
+    description=info_data["Card"]["Description"],
     version="latest",
 )
 
@@ -49,7 +47,7 @@ class OrientEnum(str, Enum):
 
 @app.get("/", tags=["Root"])
 def read_root():
-    return {info_data["card"]["Identifier"]: info_data["card"]["Slug"]}
+    return {info_data["Card"]["Identifier"]: info_data["Card"]["Slug"]}
 
 
 # Serve the favicon
@@ -65,9 +63,8 @@ async def favicon():
 def card():
     """
     Get card information
-
     """
-    return info_data["card"]
+    return info_data["Card"]
 
 
 @app.get("/card/model_id", tags=["Metadata"])
@@ -76,7 +73,7 @@ def model_id():
     Get model identifier
 
     """
-    return info_data["card"]["Identifier"]
+    return info_data["Card"]["Identifier"]
 
 
 @app.get("/card/slug", tags=["Metadata"])
@@ -85,7 +82,7 @@ def slug():
     Get the slug
 
     """
-    return info_data["card"]["Slug"]
+    return info_data["Card"]["Slug"]
 
 
 @app.get("/card/input_type", tags=["Metadata"])
@@ -94,7 +91,7 @@ def input_entity():
     Get the input type
 
     """
-    return info_data["card"]["Input"]
+    return info_data["Card"]["Input"]
 
 
 @app.get("/card/input_shape", tags=["Metadata"])
@@ -103,7 +100,7 @@ def input_shape():
     Get the input shape
 
     """
-    return info_data["card"]["Input Shape"]
+    return info_data["Card"]["Input Shape"]
 
 
 @app.get("/example/input", tags=["Metadata"])

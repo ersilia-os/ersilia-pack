@@ -13,11 +13,24 @@ class InstallParser:
         self.python_version = self._get_python_version()
 
     def _get_python_version(self):
-        raise NotImplementedError("Implement this in sub-class")
+        raise NotImplementedError("Implement this in subclass")
     
     def _get_commands(self):
-        raise NotImplementedError("Implement this in sub-class")
+        raise NotImplementedError("Implement this in subclass")
     
+    @staticmethod
+    def _eval_conda_prefix():
+        # This returns an empty string if conda is not discoverable
+        return os.popen("conda info --base").read().strip()
+    
+    def get_python_exe(self):
+        conda_prefix = self._eval_conda_prefix()
+        if not conda_prefix:
+            return "python"
+        if self.conda_env_name is None:
+            return f"{conda_prefix}/bin/python"
+        return f"{conda_prefix}/envs/{self.conda_env_name}/bin/python"
+
     @staticmethod
     def _has_conda(commands):
         for command in commands:
@@ -29,14 +42,13 @@ class InstallParser:
         lines = []
         commands = self._get_commands()
         has_conda = self._has_conda(commands)
+        conda_prefix = self._eval_conda_prefix()
+        python_exe = self.get_python_exe()
         for command in commands:
             if type(command) is list:
                 if command[0] == "pip":
                     assert len(command) == 3, "pip command must have 3 arguments"
-                    if has_conda:
-                        cmd = "$python_exe -m pip install " + command[1] + "==" + command[2]
-                    else:
-                        cmd = "python -m pip install " + command[1] + "==" + command[2]
+                    cmd = f"{python_exe} -m pip install " + command[1] + "==" + command[2]
                 elif command[0] == "conda":
                     assert len(command) == 4, "conda command must have 4 arguments"
                     if command[3] == "default":
@@ -53,19 +65,16 @@ class InstallParser:
         if has_conda:
             if self.conda_env_name is None:
                 conda_env_name = "base"
-                python_exe = "python_exe=$conda_prefix/bin/python"
+                self.python_exe = "python_exe=$conda_prefix/bin/python"
             else:
                 conda_env_name = self.conda_env_name
-                python_exe = f"python_exe=$conda_prefix/envs/{conda_env_name}/bin/python"
+                self.python_exe = f"python_exe=$conda_prefix/envs/{conda_env_name}/bin/python"
             conda_lines = [
-                "source $conda_prefix/etc/profile.d/conda.sh",
+                f"source {conda_prefix}/etc/profile.d/conda.sh",
                 "conda activate " + conda_env_name
             ]
-            lines = [python_exe] + conda_lines + lines
-            txt = '''
-                #!/bin/bash
-                conda_prefix=${CONDA_EXE%/bin/conda}
-                '''
+            lines = [self.python_exe] + conda_lines + lines
+            
             txt = textwrap.dedent(txt) + os.linesep
         txt += os.linesep.join(lines)
         return txt
@@ -225,7 +234,7 @@ class MetadataYml2JsonConverter:
             f.write(json.dumps(data, indent=4))
 
 if __name__ == "__main__":
-    parser = DockerfileInstallParser("/home/dee/ersilia-project/models-test/eos3nn9")
+    parser = DockerfileInstallParser("<path here>")
     parser.write_bash_script()
     #converter = MetadataYml2JsonConverter("metadata.yml", "metadata.json")
     #converter.convert()
