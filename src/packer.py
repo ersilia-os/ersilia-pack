@@ -7,7 +7,7 @@ import subprocess
 import json
 import yaml
 import urllib.request
-from .parsers import InstallParser, MetadataYml2JsonConverter
+from .parsers import YAMLInstallParser, DockerfileInstallParser, MetadataYml2JsonConverter
 
 root = os.path.dirname(os.path.abspath(__file__))
 
@@ -32,7 +32,12 @@ class FastApiAppPacker(object):
         if not os.path.exists(os.path.join(self.bundle_dir, "installs")):
             os.makedirs(os.path.join(self.bundle_dir, "installs"))
         self.sh_file = os.path.join(self.bundle_dir, "installs", "install.sh")
-        self.conda_env_name = conda_env_name
+        if self._has_dockerfile():
+            self.install_writer = DockerfileInstallParser(self.dest_dir, conda_env_name)
+        elif self._has_install_yml():
+            self.install_writer = YAMLInstallParser(self.dest_dir, conda_env_name)
+        else:
+            raise Exception("No install file found") # TODO implement better exceptions
 
     def _get_model_id(self):
         json_file = os.path.join(self.dest_dir, "metadata.json")
@@ -166,37 +171,20 @@ class FastApiAppPacker(object):
             print("API names from artifact")
             # TODO
 
-    def _convert_dockerfile_to_install_file(self):
-        # TODO: This method should be improved to handle more complex Dockerfiles
-        dockerfile_path = os.path.join(self.dest_dir, "Dockerfile")
-        if not os.path.exists(dockerfile_path):
-            print("Dockerfile does not exist")
+    def _write_install_file(self):
+        if not self.install_writer.check_file_exists():
+            print(f"Install file {self.install_writer.file_type} does not exist")
             return
-        with open(dockerfile_path) as f:
-            lines = f.readlines()
-        install_lines = []
-        for l in lines:
-            if l.startswith("RUN"):
-                install_lines += [l[4:]]
-        with open(self.sh_file, "w") as f:
-            f.write("\n".join(install_lines))
+        if os.path.exists(self.sh_file):
+            print("Install file already exists")
+            return
+        self.install_writer.write_bash_script(self.sh_file)
 
     def _has_install_yml(self):
         return os.path.exists(os.path.join(self.dest_dir, "install.yml"))
     
     def _has_dockerfile(self):
         return os.path.exists(os.path.join(self.dest_dir, "Dockerfile"))
-
-    def _convert_install_yml_to_install_file(self):
-        yml_path = os.path.join(self.dest_dir, "install.yml")
-        if not os.path.exists(yml_path):
-            print("Installs YAML does not exist")
-            return
-        if os.path.exists(self.sh_file):
-            print("Install file already exists")
-            return
-        ymlparser = InstallParser(yml_path, conda_env_name=self.conda_env_name)
-        ymlparser.write_bash_script(self.sh_file)
 
     def _install_packages(self):
         cmd = f"bash {self.sh_file}"
@@ -209,13 +197,7 @@ class FastApiAppPacker(object):
         self._edit_post_commands_app()
         self._get_info()
         self._get_input_schema()
-        if self._has_install_yml():
-            self._convert_install_yml_to_install_file()
-        elif self._has_dockerfile():
-            self._convert_dockerfile_to_install_file()
-        else:
-            print("No install file found. Proceeding anyway")
-            pass
+        self._write_install_file()
         self._install_packages()
 
 
