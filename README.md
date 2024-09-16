@@ -16,10 +16,16 @@ You can check that the model repository contains all the expected files as follo
 ersilia_model_lint --repo_path $REPO_PATH
 ```
 
-You can pack the model as follows:
+You can pack models that either require conda install or only pip installs, or both:
 
 ```bash
-ersilia_model_pack --repo_path $REPO_PATH --bundle_path $BUNDLE_PATH
+ersilia_model_pack --repo_path $REPO_PATH --bundles_repo_path $BUNDLE_PATH
+```
+
+If there are conda dependencies within the provided install instructions, the command above will install them in the base conda environment. To install conda dependencies in a specific conda environment, modify the above command as follows:
+
+```bash
+ersilia_model_pack --repo_path $REPO_PATH --bundles_repo_path $BUNDLE_PATH --conda_env_name $CONDA_ENV
 ```
 
 This will create a folder with the packed model and the app available. The app can be served as follows:
