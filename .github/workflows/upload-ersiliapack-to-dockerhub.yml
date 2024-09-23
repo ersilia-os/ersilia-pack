@@ -1,0 +1,69 @@
+name: Upload Ersilia Pack to DockerHub
+on:
+  workflow_dispatch:
+  
+jobs:
+  upload_ersiliapack_to_dockerhub:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dockerfile: Dockerfile.condapy38_23.11.0-2
+            tag: ersiliaos/ersiliapack-conda-py38
+          - dockerfile: Dockerfile.condapy39_24.7.1-0
+            tag: ersiliaos/ersiliapack-conda-py39
+          - dockerfile: Dockerfile.condapy310_24.7.1-0
+            tag: ersiliaos/ersiliapack-conda-py310
+          - dockerfile: Dockerfile.condapy311_24.7.1-0
+            tag: ersiliaos/ersiliapack-conda-py311
+          - dockerfile: Dockerfile.condapy312_24.7.1-0
+            tag: ersiliaos/ersiliapack-conda-py312
+          - dockerfile: Dockerfile.pip3.8-slim-bullseye
+            tag: ersiliaos/ersiliapack-py38
+          - dockerfile: Dockerfile.pip3.9-slim-bullseye
+            tag: ersiliaos/ersiliapack-py39
+          - dockerfile: Dockerfile.pip3.10-slim-bullseye
+            tag: ersiliaos/ersiliapack-py310
+          - dockerfile: Dockerfile.pip3.11-slim-bullseye
+            tag: ersiliaos/ersiliapack-py311
+          - dockerfile: Dockerfile.pip3.12-slim-bullseye
+            tag: ersiliaos/ersiliapack-py312
+
+    steps:
+      # https://github.com/docker/setup-qemu-action
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      
+      # https://github.com/docker/setup-buildx-action
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+    
+      # log in to dockerhub
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          
+      # Copy and run the script from ersilia that generates the requisite Dockerfiles
+      - name: Generate Dockerfiles
+        run: |
+          wget -O Dockerfile.conda https://raw.githubusercontent.com/ersilia-os/ersilia/master/dockerfiles/dockerize-ersiliapack/base/Dockerfile.conda
+          wget -O Dockerfile.pip https://raw.githubusercontent.com/ersilia-os/ersilia/master/dockerfiles/dockerize-ersiliapack/base/Dockerfile.pip
+          wget -O generate_dockerfiles.py https://raw.githubusercontent.com/ersilia-os/ersilia/master/dockerfiles/dockerize-ersiliapack/base/generate_dockerfiles.py
+          python generate_dockerfiles.py
+          ls -l
+
+      # Build and push the Docker images
+      - name: Build and push images
+        uses: docker/build-push-action@v6.7.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ matrix.tag }}:latest
+
