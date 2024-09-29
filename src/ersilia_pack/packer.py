@@ -91,7 +91,7 @@ class FastApiAppPacker(object):
         print("Getting info from metadata")
         data = self._load_metadata()
         info = {}
-        info["Card"] = data
+        info["card"] = data
         info["model_id"] = data["Identifier"]
         info["Slug"] = data["Slug"]
         api_list = self._get_api_names_from_sh()
@@ -104,11 +104,11 @@ class FastApiAppPacker(object):
 
     def _get_input_schema(self):
         print(self.info)
-        input_entity = self.info["Card"]["Input"]
+        input_entity = self.info["card"]["Input"]
         if len(input_entity) > 1:
             return
         input_entity = input_entity[0].lower().replace(" ", "_")
-        input_shape = self.info["Card"]["Input Shape"].lower().replace(" ", "_")
+        input_shape = self.info["card"]["Input Shape"].lower().replace(" ", "_")
         shutil.copy(
             os.path.join(
                 root, "templates", "input_schemas", input_entity, input_shape + ".py"
@@ -201,6 +201,66 @@ class FastApiAppPacker(object):
         with open(os.path.join(self.bundle_dir, "model", "framework", "run.sh"), "w") as f:
             f.write(os.linesep.join(lines))
 
+    def _write_api_schema(self):
+        # This is a dropin method. It should be more sophisticated
+        # This is to make ersilia CLI work with Dockerized models
+
+        def resolve_output_meta_in_schema(output_type, output_shape):
+            if len(output_type) == 1:
+                output_type = output_type[0]
+            elif (len(output_type) == 2) and (set(output_type) == set(["Integer", "Float"])):
+                    output_type = "Float"
+            else:
+                return 
+            
+            if output_shape == "Single" and output_type == "Float":
+                return "numeric"
+            if output_shape == "Single" and output_type == "String":
+                return "string"
+            if output_shape == "Single" and output_type == "Integer":
+                return "numeric"
+            if output_shape == "List" and output_type == "Float":
+                return "numeric_array"
+            if output_shape == "List" and output_type == "String":
+                return "string_array"
+
+        with open(os.path.join(self.bundle_dir, "information.json"), "r") as f:
+            metadata = json.load(f)
+        
+        if "card" in metadata:
+            metadata = metadata["card"]
+        output_type = resolve_output_meta_in_schema(
+            metadata["Output Type"], metadata["Output Shape"]
+        )
+        with open(os.path.join(
+            self.bundle_dir, "model", "framework", "examples", "output.csv"), 
+            "r") as f:
+            example_output=f.readlines()[0]
+        
+        shape = len(example_output.split(","))
+        meta = example_output.split(",")
+        meta = [m.strip() for m in meta]
+        input_schema = {
+            "key": {"type": "string"},
+            "input": {"type": "string"},
+            "text": {"type": "string"},
+        }
+        output_schema = {
+            "outcome": {
+                "type": output_type,
+                "shape": [shape],
+                "meta": meta,
+                }
+        }
+        api_schema = {'run': {'input': input_schema, 'output': output_schema}}
+        
+        with open(os.path.join(self.bundle_dir, "api_schema.json"), "w") as f:
+            json.dump(api_schema, f, indent=4)
+
+    def _write_status_file(self):
+        with open(os.path.join(self.bundle_dir, "status.json"), "w") as f:
+            json.dump({"done": True}, f, indent=4)
+
     def pack(self):
         self._create_bundle_structure()
         self._get_favicon()
@@ -211,6 +271,8 @@ class FastApiAppPacker(object):
         self._write_install_file()
         self._install_packages()
         self._modify_python_exe()
+        self._write_api_schema()
+        self._write_status_file()
 
 
 def main():
