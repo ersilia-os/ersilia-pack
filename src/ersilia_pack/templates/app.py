@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Query, Body
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 import uuid
 import json
 import csv
@@ -24,11 +24,11 @@ from utils import orient_to_json
 with open(os.path.join(bundle_folder, "information.json"), "r") as f:
     info_data = json.load(f)
 
-output_type = info_data["Card"]["Output Type"]
+output_type = info_data["card"]["Output Type"]
 
 app = FastAPI(
-    title="{0}:{1}".format(info_data["Card"]["Identifier"], info_data["Card"]["Slug"]),
-    description=info_data["Card"]["Description"],
+    title="{0}:{1}".format(info_data["card"]["Identifier"], info_data["card"]["Slug"]),
+    description=info_data["card"]["Description"],
     version="latest",
 )
 
@@ -47,7 +47,7 @@ class OrientEnum(str, Enum):
 
 @app.get("/", tags=["Root"])
 def read_root():
-    return {info_data["Card"]["Identifier"]: info_data["Card"]["Slug"]}
+    return {info_data["card"]["Identifier"]: info_data["card"]["Slug"]}
 
 
 # Serve the favicon
@@ -64,7 +64,7 @@ def card():
     """
     Get card information
     """
-    return info_data["Card"]
+    return info_data["card"]
 
 
 @app.get("/card/model_id", tags=["Metadata"])
@@ -73,7 +73,7 @@ def model_id():
     Get model identifier
 
     """
-    return info_data["Card"]["Identifier"]
+    return info_data["card"]["Identifier"]
 
 
 @app.get("/card/slug", tags=["Metadata"])
@@ -82,7 +82,7 @@ def slug():
     Get the slug
 
     """
-    return info_data["Card"]["Slug"]
+    return info_data["card"]["Slug"]
 
 
 @app.get("/card/input_type", tags=["Metadata"])
@@ -91,7 +91,7 @@ def input_entity():
     Get the input type
 
     """
-    return info_data["Card"]["Input"]
+    return info_data["card"]["Input"]
 
 
 @app.get("/card/input_shape", tags=["Metadata"])
@@ -100,7 +100,7 @@ def input_shape():
     Get the input shape
 
     """
-    return info_data["Card"]["Input Shape"]
+    return info_data["card"]["Input Shape"]
 
 
 @app.get("/example/input", tags=["Metadata"])
@@ -162,5 +162,15 @@ def columns_output():
     with open(os.path.join(framework_folder, "examples", "output.csv"), "r") as f:
         reader = csv.reader(f)
         return next(reader)
+
+@app.post("/info", tags=["Info"])
+def get_info():
+    """
+    Get API information of the model
+    #TODO this will be extended when we provide more APIs per model
+    Also, this is unfortunately a POST request when it should have been GET
+    because of Ersilia's current implementation (which spawned off from BentoML)
+    """
+    return JSONResponse(content={"apis_list": ["run"]})
 
 # Post commands
