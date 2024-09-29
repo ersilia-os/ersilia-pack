@@ -11,24 +11,34 @@ jobs:
         include:
           - dockerfile: Dockerfile.condapy38_23.11.0-2
             tag: ersiliaos/ersiliapack-conda-py38
+            version: py38_23.11.0-2
           - dockerfile: Dockerfile.condapy39_24.7.1-0
             tag: ersiliaos/ersiliapack-conda-py39
+            version: py39_24.7.1-0
           - dockerfile: Dockerfile.condapy310_24.7.1-0
             tag: ersiliaos/ersiliapack-conda-py310
+            version: py310_24.7.1-0
           - dockerfile: Dockerfile.condapy311_24.7.1-0
             tag: ersiliaos/ersiliapack-conda-py311
+            version: py311_24.7.1-0
           - dockerfile: Dockerfile.condapy312_24.7.1-0
             tag: ersiliaos/ersiliapack-conda-py312
+            version: py312_24.7.1-0
           - dockerfile: Dockerfile.pip3.8-slim-bullseye
             tag: ersiliaos/ersiliapack-py38
+            version: 3.8-slim-bullseye
           - dockerfile: Dockerfile.pip3.9-slim-bullseye
             tag: ersiliaos/ersiliapack-py39
+            version: 3.9-slim-bullseye
           - dockerfile: Dockerfile.pip3.10-slim-bullseye
             tag: ersiliaos/ersiliapack-py310
+            version: 3.10-slim-bullseye
           - dockerfile: Dockerfile.pip3.11-slim-bullseye
             tag: ersiliaos/ersiliapack-py311
+            version: 3.11-slim-bullseye
           - dockerfile: Dockerfile.pip3.12-slim-bullseye
             tag: ersiliaos/ersiliapack-py312
+            version: 3.12-slim-bullseye
 
     steps:
       # https://github.com/docker/setup-qemu-action
@@ -48,13 +58,22 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
           
+
+      # Check out the repository
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
       # Copy and run the script from ersilia that generates the requisite Dockerfiles
       - name: Generate Dockerfiles
+        env:
+          VERSION: ${{ matrix.version }}
         run: |
           wget -O Dockerfile.conda https://raw.githubusercontent.com/ersilia-os/ersilia/master/dockerfiles/dockerize-ersiliapack/base/Dockerfile.conda
           wget -O Dockerfile.pip https://raw.githubusercontent.com/ersilia-os/ersilia/master/dockerfiles/dockerize-ersiliapack/base/Dockerfile.pip
           wget -O generate_dockerfiles.py https://raw.githubusercontent.com/ersilia-os/ersilia/master/dockerfiles/dockerize-ersiliapack/base/generate_dockerfiles.py
-          python generate_dockerfiles.py
+          python generate_dockerfiles.py $VERSION
+          ls -l
+          rm Dockerfile.conda Dockerfile.pip generate_dockerfiles.py
           ls -l
 
       # Build and push the Docker images
