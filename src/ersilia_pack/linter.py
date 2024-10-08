@@ -1,8 +1,15 @@
 import os
 import json
 import argparse
+import logging
+
+
 
 from . import BasePacker
+
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class SimpleModelLinter(BasePacker):
@@ -63,7 +70,7 @@ class SimpleModelLinter(BasePacker):
         self._check_readme()
         self._check_model_folder()
         self._check_examples()
-        print("Model {0} seems to be valid".format(self.model_id))
+        logger.info("Model {0} seems to be valid".format(self.model_id))
 
 
 def main():
