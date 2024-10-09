@@ -5,10 +5,8 @@ import subprocess
 import sys
 import logging
 from .utils import find_free_port
+from .utils import logger
 
-logging.basicConfig(level=logging.INFO, 
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
 
 class BundleServer(object):

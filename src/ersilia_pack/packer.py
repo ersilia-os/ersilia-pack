@@ -7,13 +7,10 @@ import subprocess
 import json
 import yaml
 import urllib.request
-import logging
+from .utils import logger
 from .parsers import YAMLInstallParser, DockerfileInstallParser, MetadataYml2JsonConverter
 
 root = os.path.dirname(os.path.abspath(__file__))
-logging.basicConfig(level=logging.INFO, 
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
 class FastApiAppPacker(object):
     def __init__(self, repo_path, bundles_repo_path, conda_env_name=None):

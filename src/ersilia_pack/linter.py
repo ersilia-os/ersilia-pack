@@ -1,15 +1,13 @@
 import os
 import json
 import argparse
-import logging
+from .utils import logger
 
 
 
 from . import BasePacker
 
-logging.basicConfig(level=logging.INFO, 
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+
 
 
 class SimpleModelLinter(BasePacker):
