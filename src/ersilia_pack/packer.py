@@ -7,10 +7,10 @@ import subprocess
 import json
 import yaml
 import urllib.request
+from .utils import logger
 from .parsers import YAMLInstallParser, DockerfileInstallParser, MetadataYml2JsonConverter
 
 root = os.path.dirname(os.path.abspath(__file__))
-
 
 class FastApiAppPacker(object):
     def __init__(self, repo_path, bundles_repo_path, conda_env_name=None):
@@ -25,7 +25,7 @@ class FastApiAppPacker(object):
             os.path.join(self.bundles_repo_path, self.model_id)
         )
         if os.path.exists(self.bundle_dir):
-            print("Folder {0} existed. Removing it".format(self.bundle_dir))
+            logger.info("Folder {0} existed. Removing it".format(self.bundle_dir))
             shutil.rmtree(self.bundle_dir)
         self.bundle_dir = os.path.join(self.bundle_dir, timestamp)
         os.makedirs(self.bundle_dir)
@@ -64,16 +64,16 @@ class FastApiAppPacker(object):
         try:
             # Download the file from the URL
             urllib.request.urlretrieve(url, file_path)
-            print(f"File downloaded and saved to {file_path}")
+            logger.info(f"File downloaded and saved to {file_path}")
         except Exception as e:
-            print(f"Failed to download file. Error: {e}")
+            logger.error(f"Failed to download file. Error: {e}")
 
     def _create_bundle_structure(self):
-        print("Copying model")
+        logger.info("Copying model")
         shutil.copytree(
             os.path.join(self.dest_dir, "model"), os.path.join(self.bundle_dir, "model")
         )
-        print("Copying the favicon")
+        logger.info("Copying the favicon")
 
     def _load_metadata(self):
         json_file = os.path.join(self.dest_dir, "metadata.json")
@@ -88,7 +88,7 @@ class FastApiAppPacker(object):
         raise Exception("No metadata file found")
 
     def _get_info(self):
-        print("Getting info from metadata")
+        logger.info("Getting info from metadata")
         data = self._load_metadata()
         info = {}
         info["card"] = data
@@ -103,7 +103,7 @@ class FastApiAppPacker(object):
         self.info = info
 
     def _get_input_schema(self):
-        print(self.info)
+        logger.info(self.info)
         input_entity = self.info["card"]["Input"]
         if len(input_entity) > 1:
             return
@@ -168,15 +168,15 @@ class FastApiAppPacker(object):
             return
         api_names = self._get_api_names_from_artifact()
         if len(api_names) > 0:
-            print("API names from artifact")
+            logger.info("API names from artifact")
             # TODO
 
     def _write_install_file(self):
         if not self.install_writer.check_file_exists():
-            print(f"Install file {self.install_writer.file_type} does not exist")
+            logger.warning(f"Install file {self.install_writer.file_type} does not exist")
             return
         if os.path.exists(self.sh_file):
-            print("Install file already exists")
+            logger.info("Install file already exists")
             return
         self.install_writer.write_bash_script(self.sh_file)
 

@@ -3,7 +3,10 @@ import argparse
 import json
 import subprocess
 import sys
+import logging
 from .utils import find_free_port
+from .utils import logger
+
 
 
 class BundleServer(object):
@@ -21,11 +24,11 @@ class BundleServer(object):
             self.bundle_path = os.path.join(self.bundle_path, subfolders[0])
 
     def serve(self):
-        print("Serving the app from system Python")
+        logger.info("Serving the app from system Python")
         cmd = "{0} {1}/run_uvicorn.py --host {2} --port {3}".format(
             sys.executable, self.bundle_path, self.host, self.port
         )
-        print(cmd)
+        logger.info(cmd)
         cmd = [
             sys.executable,
             "{0}/run_uvicorn.py".format(self.bundle_path),
@@ -35,7 +38,7 @@ class BundleServer(object):
             str(self.port),
         ]
         subprocess.run(cmd, check=True)
-        print("App served successfully")
+        logger.info("App served successfully")
 
 
 def main():

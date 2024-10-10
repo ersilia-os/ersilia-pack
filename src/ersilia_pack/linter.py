@@ -1,8 +1,13 @@
 import os
 import json
 import argparse
+from .utils import logger
+
+
 
 from . import BasePacker
+
+
 
 
 class SimpleModelLinter(BasePacker):
@@ -63,7 +68,7 @@ class SimpleModelLinter(BasePacker):
         self._check_readme()
         self._check_model_folder()
         self._check_examples()
-        print("Model {0} seems to be valid".format(self.model_id))
+        logger.info("Model {0} seems to be valid".format(self.model_id))
 
 
 def main():
