@@ -15,7 +15,7 @@ class TestDockerfileInstallParser(unittest.TestCase):
 
     def test_get_python_version(self):
         version = self.parser._get_python_version()
-        self.assertEqual(version, '3.10')
+        self.assertEqual(version, '3.10-slim')
 
     def test_process_pip_command(self):
         command = "pip install package_name==1.0.0"

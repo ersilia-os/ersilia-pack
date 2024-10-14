@@ -22,10 +22,11 @@ class DockerfileInstallParser(InstallParser):
             lines = f.readlines()
         for l in lines:
             if l.startswith("FROM"):
-                m = re.search(r"python:(\d+\.\d+)", l)  # Updated regex to match "python:<version>"
+                m = re.search(r"python:(\d+\.\d+(-\w+)?)", l)  # Updated regex to match "python:<version>"
                 if m:
-                    version = m.group(1)
-                    return version  # Return the version directly
+                    version = m.group(1).strip('py')
+                    version = version[0]  + version[1:]
+                    return version    # # Return the full version string, including any tag
         raise ValueError("Python version not found in Dockerfile")
 
 
