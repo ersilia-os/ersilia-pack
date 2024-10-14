@@ -1,35 +1,38 @@
 import unittest
 from unittest.mock import patch, mock_open
 import yaml
-from src.ersilia_pack.parsers import YAMLInstallParser  # Correct import
+from src.ersilia_pack.parsers import YAMLInstallParser
 
 class TestYAMLInstallParser(unittest.TestCase):
 
     @patch("builtins.open", new_callable=mock_open)
     @patch("yaml.safe_load")
+    # Test method for the python version
     def test_get_python_version(self, mock_yaml_safe_load, mock_file):
         mock_yaml_safe_load.return_value = {"python": "3.9", "commands": ["cmd1", "cmd2"]}
-        parser = YAMLInstallParser(file_dir="/some/directory")
+        parser = YAMLInstallParser(file_dir="/workspaces/ersilia-pack/src/ersilia_pack/parsers.py")
         python_version = parser._get_python_version()
         self.assertEqual(python_version, "3.9")
 
-    @patch("builtins.open", new_callable=mock_open)
-    @patch("yaml.safe_load")
-    def test_get_python_version_raises_error(self, mock_yaml_safe_load, mock_file):
-        # Mock YAML data with an invalid non-string Python version
-        mock_yaml_safe_load.return_value = {"python": 3.9, "commands": ["cmd1", "cmd2"]}
-        parser = YAMLInstallParser(file_dir="/some/directory")
-        with self.assertRaises(ValueError) as context:
-            parser._get_python_version()
-        self.assertEqual(str(context.exception), "Python version must be a string")
 
+    @patch("builtins.open", new_callable=mock_open, read_data="python: 3.9\ncommands:\n  - cmd1\n  - cmd2")
+    @patch("yaml.safe_load", return_value={"python": 3.9, "commands": ["cmd1", "cmd2"]})
+    # Test method for the python version raising an error
+    def test_get_python_version_raises_error(self, mock_file, mock_yaml_safe_load):
+        self._outcome.result.buffer = False
+        with self.assertRaises(ValueError) as context:
+            YAMLInstallParser(file_dir="/workspaces/ersilia-pack/src/ersilia_pack/parsers.py")
+            self.assertEqual(str(context.exception), "Python version must be a string")
+       
+    
     @patch("builtins.open", new_callable=mock_open)
     @patch("yaml.safe_load")
+    # Test method for the commands
     def test_get_commands(self, mock_yaml_safe_load, mock_file):
         mock_yaml_safe_load.return_value = {"python": "3.9", "commands": ["cmd1", "cmd2"]}
-        parser = YAMLInstallParser(file_dir="/some/directory")
+        parser = YAMLInstallParser(file_dir="/workspaces/ersilia-pack/src/ersilia_pack/parsers.py")
         commands = parser._get_commands()
         self.assertEqual(commands, ["cmd1", "cmd2"])
-
+    
 if __name__ == "__main__":
     unittest.main()
