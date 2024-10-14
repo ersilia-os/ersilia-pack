@@ -47,8 +47,13 @@ class InstallParser:
         for command in commands:
             if type(command) is list:
                 if command[0] == "pip":
-                    assert len(command) == 3, "pip command must have 3 arguments"
-                    cmd = f"{python_exe} -m pip install " + command[1] + "==" + command[2]
+                    assert len(command) in (2, 3), "pip command must have 2 or 3 arguments"
+                    # for git url or wheel file/paths/url 
+                    if len(command) == 2: 
+                        if command[1].startswith("git+") or command[1].endswith(".whl"):
+                            cmd = f"{python_exe} -m pip install " + command[1]
+                    elif len(command) == 3:
+                            cmd = f"{python_exe} -m pip install " + command[1] + "==" + command[2]
                 elif command[0] == "conda":
                     assert len(command) == 4, "conda command must have 4 arguments"
                     if command[3] == "default":
