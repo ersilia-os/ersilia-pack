@@ -1,31 +1,48 @@
-
-import sys
 import os
+import pytest
+from parsers.dockerfile_install_parser import DockerfileInstallParser
+from parsers.install_parser import InstallParser
 
-# Add the parent directory to sys.path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../parser')))
 
-from dockerfile_install_parser import DockerfileInstallParser
-import unittest
+# Fixture for providing the path to the test Dockerfile located in fixtures dir
+@pytest.fixture
+def dockerfile_path():
+    return os.path.join(os.path.dirname(__file__), 'fixtures', 'Dockerfile.txt')
 
-class TestDockerfileInstallParser(unittest.TestCase):
+# Test for _get_python_version
+def test_get_python_version(dockerfile_path):
+    parser = DockerfileInstallParser(dockerfile_path)
+    python_version = parser._get_python_version()
+    # Check for Python version in the Dockerfile
+    assert python_version == "3.11", "Failed to parse the correct Python version"
+
+# Test for _process_pip_command with different pip command structures
+@pytest.mark.parametrize("command,expected", [
+    ("pip install scikit-learn==1.2.0", ["pip", "scikit-learn", "1.2.0"]),
+    ("pip install numpy", ["pip", "numpy"]),
+])
+def test_process_pip_command(command, expected):
+    parsed_command = DockerfileInstallParser._process_pip_command(command)
+    assert parsed_command == expected, f"Failed to parse pip command: {command}"
+
+# Test for _process_conda_command with different conda command structures
+@pytest.mark.parametrize("command,expected", [
+    ("conda install scikit-learn==1.2.0", ["conda", "scikit-learn", "1.2.0", "default"]),
+    ("conda install -c conda-forge numpy==1.23.5", ["conda", "numpy", "1.23.5", "conda-forge"]),
+])
+def test_process_conda_command(command, expected):
+    parsed_command = DockerfileInstallParser._process_conda_command(command)
+    assert parsed_command == expected, f"Failed to parse conda command: {command}"
+
+# Test for _get_commands to check if pip and conda commands are parsed (correctly) from Dockerfile
+def test_get_commands(dockerfile_path):
+    parser = DockerfileInstallParser(dockerfile_path)
+    commands = parser._get_commands()
     
-    def setUp(self):
-        self.parser = DockerfileInstallParser(r"C:\Users\HP\Desktop\OutreachyDec2024\Task4\ersilia-pack\dockerfiles")
 
-    def test_get_python_version(self):
-        version = self.parser._get_python_version()
-        self.assertEqual(version, '3.10-slim')
-
-    def test_process_pip_command(self):
-        command = "pip install package_name==1.0.0"
-        result = self.parser._process_pip_command(command)
-        self.assertEqual(result, ["pip", "package_name", "1.0.0"])
-
-    def test_process_conda_command(self):
-        command = "conda install package_name==1.0.0"
-        result = self.parser._process_conda_command(command)
-        self.assertEqual(result, ["conda", "package_name", "1.0.0", "default"])
-
-if __name__ == '__main__':
-    unittest.main()
+    # Verify that all commands that should be pip commands start with 'pip'
+    for cmd in commands:
+        if isinstance(cmd, list) and cmd[0] == 'pip':
+            assert cmd[0] == 'pip', f"Expected pip command but found {cmd[0]}"
+        elif isinstance(cmd, list) and cmd[0] == 'conda':
+            assert cmd[0] == 'conda', f"Expected conda command but found {cmd[0]}"
