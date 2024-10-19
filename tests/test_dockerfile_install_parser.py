@@ -2,7 +2,7 @@ import os
 import pytest
 from parsers.dockerfile_install_parser import DockerfileInstallParser
 from parsers.install_parser import InstallParser
-
+#from  install_parser import InstallParser
 
 # Fixture for providing the path to the test Dockerfile located in fixtures dir
 @pytest.fixture
