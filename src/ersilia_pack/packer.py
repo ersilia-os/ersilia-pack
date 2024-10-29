@@ -18,7 +18,7 @@ class FastApiAppPacker(object):
         self.dest_dir = repo_path
         self.bundles_repo_path = bundles_repo_path
         self.should_terminate = False
-        signal.signal(signal.SIGINT, self.signal_handller)
+        signal.signal(signal.SIGINT, self.signal_handler)
         if not os.path.exists(self.dest_dir):
             raise Exception("Model path {0} does not exist".format(self.dest_dir))
         self.model_id = self._get_model_id()
@@ -198,7 +198,7 @@ class FastApiAppPacker(object):
         while True:
             if self.should_terminate:
                 process.terminate()
-                logger.info("Installation process terminated.")
+                logger.info("Installation process terminated by user.")
                 break
             else:
                 retcode = process.poll()
