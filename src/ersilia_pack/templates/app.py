@@ -25,6 +25,10 @@ with open(os.path.join(bundle_folder, "information.json"), "r") as f:
     info_data = json.load(f)
 
 output_type = info_data["card"]["Output Type"]
+if output_type is None:
+    output_type = ["String"]
+if type(output_type) is str:
+    output_type = [output_type]
 
 app = FastAPI(
     title="{0}:{1}".format(info_data["card"]["Identifier"], info_data["card"]["Slug"]),
@@ -138,7 +142,7 @@ def example_output(orient: OrientEnum = Query(OrientEnum.records)):
         for r in reader:
             index += [r[0]]
 
-    response = orient_to_json(output_list, columns, index, orient)
+    response = orient_to_json(output_list, columns, index, orient, output_type)
     return response
 
 
@@ -163,13 +167,11 @@ def columns_output():
         reader = csv.reader(f)
         return next(reader)
 
-@app.post("/info", tags=["Info"])
+# TODO this will be extended when we incorporate more APIs 
+@app.get("/info", tags=["Info"])
 def get_info():
     """
     Get API information of the model
-    #TODO this will be extended when we provide more APIs per model
-    Also, this is unfortunately a POST request when it should have been GET
-    because of Ersilia's current implementation (which spawned off from BentoML)
     """
     return JSONResponse(content={"apis_list": ["run"]})
 
