@@ -1,0 +1,30 @@
+Identifier: bioimage.io/test-model
+Slug: unet-2d-nuclei
+Title: 2D U-Net for Nuclei Segmentation
+Description: A pretrained model for nuclei segmentation in 2D microscopy images
+Mode: pretrained
+Input: image
+Input Shape: (512, 512, 1)
+Task:
+  - segmentation
+  - instance-segmentation
+Output:
+  - probability_map
+  - binary_mask
+Output Type:
+  - float32
+  - uint8
+Output Shape: (512, 512, 2)
+Interpretation: Channel 1 contains probability scores, Channel 2 contains instance labels
+Tag:
+  - microscopy
+  - nuclei
+  - segmentation
+  - unet
+Publication: https://doi.org/10.1016/j.cell.2022.01.123
+Source Code: https://github.com/org/nuclei-segmentation
+License: MIT
+Contributor: John Doe
+Docker Architecture:
+  - linux/amd64
+  - linux/arm64

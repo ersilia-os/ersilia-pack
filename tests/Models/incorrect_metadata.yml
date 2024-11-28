@@ -1,0 +1,21 @@
+Identifier: [bioimage.io/test-model, other-id] 
+Slug: 123  
+Title: []  
+Description: A test model
+Mode: invalid_mode  
+Input: [image, mask]  
+Input Shape: not a shape  
+Task: segmentation  
+Output: []  
+Output Type: 
+  - float32
+  - invalid_type  
+  - [] 
+Output Shape: (512, wrong, 1)  
+Interpretation:  
+Tag: microscopy  
+Publication: []  
+Source Code: 
+License: [MIT, Apache]  
+Docker Architecture: arm64 
+S3: [bucket1, bucket2] 
