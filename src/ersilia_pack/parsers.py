@@ -147,21 +147,24 @@ class DockerfileInstallParser(InstallParser):
         raise ValueError("Python version not found in Dockerfile")
 
     @staticmethod
-    def _process_pip_command(command):
+    def _process_pip_command(self, command):
         parts = command.split()
         if len(parts) < 3 or parts[0] != 'pip' or parts[1] != 'install':
             raise ValueError("Invalid format. Expected 'pip install package[==version]'")
         
-        package_info = parts[2].split('==')
-        if len(package_info) == 2:
-            package, version = package_info
+        if parts[2].startswith("git+"):
+            return ['pip', 'git', parts[2], parts[2].split('@')[-1]]
+        elif '--index-url' in parts:
+            idx = parts.index('--index-url')
+            return [parts[0], parts[2], parts[idx:]]
+        elif "==" in parts[2]:
+            package, version = parts[2].split("==")
             return [parts[0], package, version]
         else:
-            package = package_info[0]
-            return [parts[0], package]
+            raise ValueError("Invalid format. Specify the version or use VCS/URL.")
     
     @staticmethod
-    def _process_conda_command(command):
+    def _process_conda_command(self, command):
         parts = command.split()
         if len(parts) < 3 or parts[0] != 'conda' or parts[1] != 'install':
             raise ValueError("Invalid format. Expected 'conda install [-c channel] package[==version|=version]'")
