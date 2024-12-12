@@ -102,8 +102,31 @@ class YAMLInstallParser(InstallParser):
             raise ValueError("Python version must be a string")
         return self.data["python"]
     
+    @staticmethod
+    def _validate_pip_command(self, command):
+        if len(command) < 3 or command[0] != 'pip':
+            raise ValueError("Invalid pip command format. Must start with 'pip' and include a package.")
+        
+        if command[1] == "git":
+            if len(command) != 4:
+                raise ValueError("Invalid VCS pip command. Must specify 'git', URL, and commit SHA.")
+            return command
+        elif len(command) >= 3 and command[1] == "--index-url":
+            return command
+        elif len(command) == 3:
+            return command
+        else:
+            raise ValueError("Invalid pip command. Must include package and version or URL.")
+
     def _get_commands(self):
-        return self.data["commands"]
+        commands = self.data["commands"]
+        validated_commands = []
+        for command in commands:
+            if command[0] == 'pip':
+                validated_commands.append(self._validate_pip_command(command))
+            else:
+                validated_commands.append(command)
+        return validated_commands
 
 class DockerfileInstallParser(InstallParser):
     def __init__(self, file_dir, conda_env_name=None):
