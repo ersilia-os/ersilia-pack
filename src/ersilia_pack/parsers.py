@@ -103,20 +103,23 @@ class YAMLInstallParser(InstallParser):
         return self.data["python"]
     
     @staticmethod
-    def _validate_pip_command(self, command):
+    def _validate_pip_command(command):
         if len(command) < 3 or command[0] != 'pip':
             raise ValueError("Invalid pip command format. Must start with 'pip' and include a package.")
-        
+    
         if command[1] == "git":
             if len(command) != 4:
                 raise ValueError("Invalid VCS pip command. Must specify 'git', URL, and commit SHA.")
             return command
-        elif len(command) >= 3 and command[1] == "--index-url":
+        elif '--index-url' in command:
+            if len(command) < 5:
+                raise ValueError("Invalid pip command with --index-url. Must include package, version, and URL.")
             return command
         elif len(command) == 3:
             return command
         else:
             raise ValueError("Invalid pip command. Must include package and version or URL.")
+
 
     def _get_commands(self):
         commands = self.data["commands"]
