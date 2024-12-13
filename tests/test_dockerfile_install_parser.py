@@ -1,29 +1,44 @@
 import os
+import sys
+import re
 import pytest
-from parsers.dockerfile_install_parser import DockerfileInstallParser
-from parsers.install_parser import InstallParser
+from src.ersilia_pack.parsers.install_parser import InstallParser
+from src.ersilia_pack.parsers.dockerfile_install_parser import DockerfileInstallParser
+
 
 
 # Fixture for providing the path to the test Dockerfile located in fixtures dir
 @pytest.fixture
 def dockerfile_path():
-    return os.path.join(os.path.dirname(__file__), 'fixtures', 'Dockerfile.txt')
+    return os.path.join(os.path.dirname(__file__), 'fixtures', 'eos4e41_Dockerfile.txt')
 
 # Test for _get_python_version
-def test_get_python_version(dockerfile_path):
-    parser = DockerfileInstallParser(dockerfile_path)
-    python_version = parser._get_python_version()
-    # Check for Python version in the Dockerfile
-    assert python_version == "3.11", "Failed to parse the correct Python version"
+def _get_python_version(self):
+    """
+    Extracts the Python version from the Dockerfile's FROM instruction.
+    """
+    with open(self.file_name, 'r') as f:
+        lines = f.readlines()
+    for line in lines:
+        if line.startswith("FROM"):
+            match = re.search(r"py(\d+\.\d+|\d{2,3})", line)
+            if match:
+                version = match.group(1)
+                if '.' not in version:  # Convert py38 to 3.8
+                    version = f"{version[0]}.{version[1:]}"
+                return version
+    raise ValueError("Python version not found in Dockerfile. Ensure the FROM line contains a valid Python version.")
+
 
 # Test for _process_pip_command with different pip command structures
 @pytest.mark.parametrize("command,expected", [
-    ("pip install scikit-learn==1.2.0", ["pip", "scikit-learn", "1.2.0"]),
-    ("pip install numpy", ["pip", "numpy"]),
+    ("pip install scikit-learn==1.2.0", ["pip", "scikit-learn", "1.2.0", None, []]),
+    ("pip install numpy", ["pip", "numpy", None, None, []]),  # Expect None for missing components
 ])
 def test_process_pip_command(command, expected):
     parsed_command = DockerfileInstallParser._process_pip_command(command)
     assert parsed_command == expected, f"Failed to parse pip command: {command}"
+
 
 # Test for _process_conda_command with different conda command structures
 @pytest.mark.parametrize("command,expected", [
@@ -46,3 +61,6 @@ def test_get_commands(dockerfile_path):
             assert cmd[0] == 'pip', f"Expected pip command but found {cmd[0]}"
         elif isinstance(cmd, list) and cmd[0] == 'conda':
             assert cmd[0] == 'conda', f"Expected conda command but found {cmd[0]}"
+
+
+

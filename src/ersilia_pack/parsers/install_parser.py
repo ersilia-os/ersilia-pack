@@ -1,7 +1,7 @@
 import os
 import textwrap
 
-class InstallParser:
+class InstallParser():
     def __init__(self, file_name, conda_env_name=None):
         self.conda_env_name = conda_env_name
         self.file_name = file_name
