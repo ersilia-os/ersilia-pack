@@ -1,12 +1,13 @@
 import re
-#from .install_parser import InstallParser
+import os
 from src.ersilia_pack.parsers.install_parser import InstallParser
 
 
 class DockerfileInstallParser(InstallParser):
-    def __init__(self, file_path, conda_env_name=None):
-        self.file_name = file_path
-        super().__init__(self.file_name, conda_env_name)
+    def __init__(self, file_dir, conda_env_name=None):
+        self.file_type = "Dockerfile"
+        file_name = os.path.join(file_dir, self.file_type)
+        super().__init__(file_name, conda_env_name)
 
     def _get_python_version(self):
         """
@@ -41,7 +42,7 @@ class DockerfileInstallParser(InstallParser):
         """
         parts = command.split()
         if len(parts) < 3 or parts[0] != 'pip' or parts[1] != 'install':
-            raise ValueError(f"Invalid pip command: '{command}'.")
+            raise ValueError("Invalid format. Expected 'pip install package[==version]'")
 
         package_parts = []
         flags = []
@@ -75,10 +76,6 @@ class DockerfileInstallParser(InstallParser):
                 return ["pip", package_name, version, extras, flags]
 
         raise ValueError(f"Unable to parse pip command: '{command}'.")
-
-
-
-
 
     @staticmethod
     def _process_conda_command(command):

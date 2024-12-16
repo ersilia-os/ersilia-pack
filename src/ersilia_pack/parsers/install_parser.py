@@ -1,7 +1,9 @@
 import os
+import re
 import textwrap
 
-class InstallParser():
+
+class InstallParser:
     def __init__(self, file_name, conda_env_name=None):
         self.conda_env_name = conda_env_name
         self.file_name = file_name
@@ -9,14 +11,15 @@ class InstallParser():
 
     def _get_python_version(self):
         raise NotImplementedError("Implement this in subclass")
-
+    
     def _get_commands(self):
         raise NotImplementedError("Implement this in subclass")
-
+    
     @staticmethod
     def _eval_conda_prefix():
+        # This returns an empty string if conda is not discoverable
         return os.popen("conda info --base").read().strip()
-
+    
     def get_python_exe(self):
         conda_prefix = self._eval_conda_prefix()
         if not conda_prefix:
@@ -31,6 +34,46 @@ class InstallParser():
             if isinstance(command, list) and command[0] == "conda":
                 return True
         return False
+    
+    def _is_valid_url(self, url):
+        """
+        Validate if the provided URL is a valid Git or HTTP URL.
+
+        Accepts:
+        - git+https://github.com/...
+        - git+ssh://git@github.com/...
+        - https://github.com/...
+        - git+https://my.gitlab.com/repo.git
+        """
+        pattern = re.compile(r"^(git\+https://|git\+ssh://|https://).*")
+        return bool(pattern.match(url))
+    
+    def _convert_pip_entry_to_bash(self, command):
+        num_parts = len(command)
+        if num_parts == 2 and command[1].startswith("git+"):
+            if not self._is_valid_url(command[1]):
+                raise ValueError("Invalid Git URL provided")
+            return f"pip install {command[1]}"
+        elif num_parts <= 3:
+            raise ValueError("pip command must have at least 3 arguments")
+        else:
+            cmd = f"pip install {command[1]}=={command[2]}"
+            if num_parts == 3:
+                return cmd
+            else:
+                # This assumes flags are preceded by double hyphen.
+                # For example, '--index-url' instead of 'index-url'
+                for part in command[3:]:
+                    cmd += f" {part}"
+            return cmd
+
+    def _convert_conda_entry_to_bash(self, command):
+        assert len(command) <= 4, "conda command must have 4 arguments"
+        if command[3] == "default":
+            cmd = f"conda install {command[1]}={command[2]}"
+        else:
+            cmd = f"conda install -c {command[3]} {command[1]}={command[2]}"
+        return cmd
 
     def _convert_commands_to_bash_script(self):
         lines = []
@@ -41,25 +84,23 @@ class InstallParser():
         for command in commands:
             if isinstance(command, list):
                 if command[0] == "pip":
-                    assert len(command) == 3, "pip command must have 3 arguments"
-                    cmd = f"{python_exe} -m pip install {command[1]}=={command[2]}"
+                    cmd = f"{python_exe} -m {self._convert_pip_entry_to_bash(command)}"
                 elif command[0] == "conda":
-                    assert len(command) == 4, "conda command must have 4 arguments"
-                    if command[3] == "default":
-                        cmd = f"conda install {command[1]}={command[2]}"
-                    else:
-                        cmd = f"conda install -c {command[3]} {command[1]}={command[2]}"
+                    cmd = self._convert_conda_entry_to_bash(command)
                     cmd += " -y"
                 else:
                     raise ValueError("Unknown command type specified as a list")
             else:
                 cmd = command
-            lines.append(cmd)
-
+            lines += [cmd]
         txt = ""
         if has_conda:
-            conda_env_name = self.conda_env_name if self.conda_env_name else "base"
-            self.python_exe = f"python_exe=$conda_prefix/envs/{conda_env_name}/bin/python" if self.conda_env_name else "python_exe=$conda_prefix/bin/python"
+            if self.conda_env_name is None:
+                conda_env_name = "base"
+                self.python_exe = "python_exe=$conda_prefix/bin/python"
+            else:
+                conda_env_name = self.conda_env_name
+                self.python_exe = f"python_exe=$conda_prefix/envs/{conda_env_name}/bin/python"
             conda_lines = [
                 f"source {conda_prefix}/etc/profile.d/conda.sh",
                 f"conda activate {conda_env_name}"
@@ -69,7 +110,7 @@ class InstallParser():
             txt = textwrap.dedent(txt) + os.linesep
         txt += os.linesep.join(lines)
         return txt
-
+    
     def write_bash_script(self, file_name=None):
         if file_name is None:
             file_name = self.file_name.split(".")[0] + ".sh"
