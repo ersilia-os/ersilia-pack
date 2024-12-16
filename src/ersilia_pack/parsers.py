@@ -102,8 +102,34 @@ class YAMLInstallParser(InstallParser):
             raise ValueError("Python version must be a string")
         return self.data["python"]
     
+    @staticmethod
+    def _validate_pip_command(command):
+        if len(command) < 3 or command[0] != 'pip':
+            raise ValueError("Invalid pip command format. Must start with 'pip' and include a package.")
+    
+        if command[1] == "git":
+            if len(command) != 4:
+                raise ValueError("Invalid VCS pip command. Must specify 'git', URL, and commit SHA.")
+            return command
+        elif '--index-url' in command:
+            if len(command) < 5:
+                raise ValueError("Invalid pip command with --index-url. Must include package, version, and URL.")
+            return command
+        elif len(command) == 3:
+            return command
+        else:
+            raise ValueError("Invalid pip command. Must include package and version or URL.")
+
+
     def _get_commands(self):
-        return self.data["commands"]
+        commands = self.data["commands"]
+        validated_commands = []
+        for command in commands:
+            if command[0] == 'pip':
+                validated_commands.append(self._validate_pip_command(command))
+            else:
+                validated_commands.append(command)
+        return validated_commands
 
 class DockerfileInstallParser(InstallParser):
     def __init__(self, file_dir, conda_env_name=None):
@@ -124,21 +150,24 @@ class DockerfileInstallParser(InstallParser):
         raise ValueError("Python version not found in Dockerfile")
 
     @staticmethod
-    def _process_pip_command(command):
+    def _process_pip_command(self, command):
         parts = command.split()
         if len(parts) < 3 or parts[0] != 'pip' or parts[1] != 'install':
             raise ValueError("Invalid format. Expected 'pip install package[==version]'")
         
-        package_info = parts[2].split('==')
-        if len(package_info) == 2:
-            package, version = package_info
+        if parts[2].startswith("git+"):
+            return ['pip', 'git', parts[2], parts[2].split('@')[-1]]
+        elif '--index-url' in parts:
+            idx = parts.index('--index-url')
+            return [parts[0], parts[2], parts[idx:]]
+        elif "==" in parts[2]:
+            package, version = parts[2].split("==")
             return [parts[0], package, version]
         else:
-            package = package_info[0]
-            return [parts[0], package]
+            raise ValueError("Invalid format. Specify the version or use VCS/URL.")
     
     @staticmethod
-    def _process_conda_command(command):
+    def _process_conda_command(self, command):
         parts = command.split()
         if len(parts) < 3 or parts[0] != 'conda' or parts[1] != 'install':
             raise ValueError("Invalid format. Expected 'conda install [-c channel] package[==version|=version]'")
