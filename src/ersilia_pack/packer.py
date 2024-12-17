@@ -9,7 +9,6 @@ import yaml
 import urllib.request
 from .utils import logger
 from .parsers import YAMLInstallParser, DockerfileInstallParser, MetadataYml2JsonConverter
-import signal
 
 root = os.path.dirname(os.path.abspath(__file__))
 
@@ -17,8 +16,6 @@ class FastApiAppPacker(object):
     def __init__(self, repo_path, bundles_repo_path, conda_env_name=None):
         self.dest_dir = repo_path
         self.bundles_repo_path = bundles_repo_path
-        self.should_terminate = False
-        signal.signal(signal.SIGINT, self.signal_handler)
         if not os.path.exists(self.dest_dir):
             raise Exception("Model path {0} does not exist".format(self.dest_dir))
         self.model_id = self._get_model_id()
@@ -41,9 +38,7 @@ class FastApiAppPacker(object):
             self.install_writer = YAMLInstallParser(self.dest_dir, conda_env_name)
         else:
             raise Exception("No install file found") # TODO implement better exceptions
-    def signal_handler(self, signum, frame):
-        logger.info("Termination signal received, stopping the installation")
-        self.should_terminate = True
+
     def _get_model_id(self):
         json_file = os.path.join(self.dest_dir, "metadata.json")
         if os.path.exists(json_file):
@@ -189,20 +184,8 @@ class FastApiAppPacker(object):
 
     def _install_packages(self):
         cmd = f"bash {self.sh_file}"
-        process = subprocess.Popen(cmd, shell=True).wait()
+        subprocess.Popen(cmd, shell=True).wait()
 
-        while True:
-            if self.should_terminate:
-                process.terminate()
-                logger.info("Installation process terminated by user.")
-                break
-            else:
-                retcode = process.poll()
-                if retcode is not None:
-                    logger.info("installation completed successfully.")
-                else:
-                    logger.error(f"Installation failed with return code {retcode}")
-                break
     def _modify_python_exe(self):
         python_exe = self.install_writer.get_python_exe()
         with open(os.path.join(self.bundle_dir, "model", "framework", "run.sh"), "r") as f:
