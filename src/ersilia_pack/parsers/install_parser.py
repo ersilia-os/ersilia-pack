@@ -54,7 +54,7 @@ class InstallParser:
             if not self._is_valid_url(command[1]):
                 raise ValueError("Invalid Git URL provided")
             return f"pip install {command[1]}"
-        elif num_parts <= 3:
+        elif num_parts < 3:
             raise ValueError("pip command must have at least 3 arguments")
         else:
             cmd = f"pip install {command[1]}=={command[2]}"

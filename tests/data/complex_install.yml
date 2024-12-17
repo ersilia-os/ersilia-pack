@@ -1,0 +1,5 @@
+python: "3.10"
+commands:
+    - ["pip", "pandas", "2.1.4"]
+    - ["pip", "torch", "2.4.1", "--index-url", "https://download.pytorch.org/whl/cpu"]
+    - ["pip", "git+https://github.com/example.git"]
