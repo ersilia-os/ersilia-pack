@@ -25,7 +25,7 @@ class FastApiAppPacker(object):
             os.path.join(self.bundles_repo_path, self.model_id)
         )
         if os.path.exists(self.bundle_dir):
-            logger.info("Folder {0} existed. Removing it".format(self.bundle_dir))
+            logger.debug("Folder {0} existed. Removing it".format(self.bundle_dir))
             shutil.rmtree(self.bundle_dir)
         self.bundle_dir = os.path.join(self.bundle_dir, timestamp)
         os.makedirs(self.bundle_dir)
@@ -40,17 +40,8 @@ class FastApiAppPacker(object):
             raise Exception("No install file found") # TODO implement better exceptions
 
     def _get_model_id(self):
-        json_file = os.path.join(self.dest_dir, "metadata.json")
-        if os.path.exists(json_file):
-            with open(json_file, "r") as f:
-                data = json.load(f)
-                return data["Identifier"]
-        yml_file = os.path.join(self.dest_dir, "metadata.yml")
-        if os.path.exists(yml_file):
-            with open(yml_file, "r") as f:
-                data = yaml.safe_load(f)
-                return data["Identifier"]
-        raise Exception("No metadata file found")
+        data = self._load_metadata()
+        return data["Identifier"]
 
     def _get_favicon(self):
         dest_folder = os.path.join(self.bundle_dir, "static")
@@ -64,16 +55,16 @@ class FastApiAppPacker(object):
         try:
             # Download the file from the URL
             urllib.request.urlretrieve(url, file_path)
-            logger.info(f"File downloaded and saved to {file_path}")
+            logger.debug(f"File downloaded and saved to {file_path}")
         except Exception as e:
             logger.error(f"Failed to download file. Error: {e}")
 
     def _create_bundle_structure(self):
-        logger.info("Copying model")
+        logger.debug("Copying model")
         shutil.copytree(
             os.path.join(self.dest_dir, "model"), os.path.join(self.bundle_dir, "model")
         )
-        logger.info("Copying the favicon")
+        logger.debug("Copying the favicon")
 
     def _load_metadata(self):
         json_file = os.path.join(self.dest_dir, "metadata.json")
@@ -88,7 +79,7 @@ class FastApiAppPacker(object):
         raise Exception("No metadata file found")
 
     def _get_info(self):
-        logger.info("Getting info from metadata")
+        logger.debug("Getting info from metadata")
         data = self._load_metadata()
         info = {}
         info["card"] = data
@@ -103,7 +94,7 @@ class FastApiAppPacker(object):
         self.info = info
 
     def _get_input_schema(self):
-        logger.info(self.info)
+        logger.debug(self.info)
         input_entity = self.info["card"]["Input"]
         if len(input_entity) > 1:
             return
@@ -172,7 +163,7 @@ class FastApiAppPacker(object):
             logger.warning(f"Install file {self.install_writer.file_type} does not exist")
             return
         if os.path.exists(self.sh_file):
-            logger.info("Install file already exists")
+            logger.debug("Install file already exists")
             return
         self.install_writer.write_bash_script(self.sh_file)
 
