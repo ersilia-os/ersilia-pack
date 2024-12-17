@@ -1,6 +1,6 @@
 import re
 import os
-from src.ersilia_pack.parsers.install_parser import InstallParser
+from .install_parser import InstallParser
 
 FILE_TYPE = "Dockerfile"
 
