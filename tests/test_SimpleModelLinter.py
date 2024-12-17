@@ -4,6 +4,7 @@ from ersilia_pack.linter import SimpleModelLinter
 
 MODEL_PATH = "Models/eos30d7"
 
+@pytest.mark.skip(reason="This test needs the fixture to be present in the codebase")
 class TestSimpleModelLinter:
     @pytest.fixture
     def linter(self):

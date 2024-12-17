@@ -3,12 +3,14 @@ import re
 import yaml
 from .install_parser import InstallParser
 
+FILE_TYPE = "install.yml"
+
 class YAMLInstallParser(InstallParser):
     def __init__(self, file_dir, conda_env_name=None):
-        self.file_type = "install.yml"
-        file_name = os.path.join(file_dir, self.file_type)
-        super().__init__(file_name, conda_env_name)
+        self.file_type = FILE_TYPE
+        self.file_name = os.path.join(file_dir, self.file_type)
         self.data = self._load_yaml()
+        super().__init__(self.file_name, conda_env_name)
 
     def _load_yaml(self):
         with open(self.file_name, 'r') as file:

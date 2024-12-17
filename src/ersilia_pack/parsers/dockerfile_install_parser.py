@@ -2,10 +2,11 @@ import re
 import os
 from src.ersilia_pack.parsers.install_parser import InstallParser
 
+FILE_TYPE = "Dockerfile"
 
 class DockerfileInstallParser(InstallParser):
     def __init__(self, file_dir, conda_env_name=None):
-        self.file_type = "Dockerfile"
+        self.file_type = FILE_TYPE
         file_name = os.path.join(file_dir, self.file_type)
         super().__init__(file_name, conda_env_name)
 
@@ -44,38 +45,13 @@ class DockerfileInstallParser(InstallParser):
         if len(parts) < 3 or parts[0] != 'pip' or parts[1] != 'install':
             raise ValueError("Invalid format. Expected 'pip install package[==version]'")
 
-        package_parts = []
-        flags = []
-        for part in parts[2:]:
-            if part.startswith('--'):
-                flags.append(part)
-            else:
-                package_parts.append(part)
-
-        if len(package_parts) == 1:
-            package = package_parts[0]
-            git_match = re.match(r'git\+([a-zA-Z0-9\-\.]+://[^\s]+)(@[\w\-\.]+)?', package)
-            if git_match:
-                git_url = git_match.group(1)
-                git_tag = git_match.group(2)
-                return ["pip", git_url, git_tag, None, flags]
-
-            if package.endswith('.whl') or re.match(r'https?://.*\.whl$', package):
-                return ["pip", package, None, None, flags]
-
-            package_match = re.match(
-                r'([a-zA-Z0-9_\-\.]+)(\[.*\])?(==|>=|<=|~=|!=)?([\d\.]*)', package
-            )
-            if package_match:
-                package_name = package_match.group(1)
-                extras = package_match.group(2)
-                version_operator = package_match.group(3)
-                version = package_match.group(4)
-                # Separate the version operator from the version
-                version = version if version else None
-                return ["pip", package_name, version, extras, flags]
-
-        raise ValueError(f"Unable to parse pip command: '{command}'.")
+        package_info = parts[2].split('==')
+        if len(package_info) == 2:
+            package, version = package_info
+            return [parts[0], package, version, *parts[3:]]
+        else:
+            package = package_info[0]
+            return [parts[0], package, *parts[3:]]
 
     @staticmethod
     def _process_conda_command(command):
@@ -94,26 +70,26 @@ class DockerfileInstallParser(InstallParser):
         """
         parts = command.split()
         if len(parts) < 3 or parts[0] != 'conda' or parts[1] != 'install':
-            raise ValueError(f"Invalid conda command: '{command}'.")
-
-        channel = "default"
-        package_info = None
-
-        if '-c' in parts:
-            channel_index = parts.index('-c') + 1
-            if channel_index < len(parts):
-                channel = parts[channel_index]
-                package_info = parts[channel_index + 1] if len(parts) > channel_index + 1 else None
+            raise ValueError("Invalid format. Expected 'conda install [-c channel] package[==version|=version]'")
+        
+        # Handle the case where no channel is given
+        if len(parts) == 3:
+            package_info = re.split(r'==|=', parts[2]) # Package version can be separated by == or =
+            if len(package_info) == 2:
+                package, version = package_info
+                return ["conda", package, version, "default"]
+            else:
+                package = package_info[0]
+                return ["conda", package, "default"]
+        
+        # Handle the case where a channel is given
+        package_info = re.split(r'==|=', parts[4])
+        if len(package_info) == 2:
+            package, version = package_info
+            return [parts[0], package, version, parts[3]]
         else:
-            package_info = parts[2]
-
-        if package_info:
-            package_parts = re.split(r'==|=', package_info)
-            package = package_parts[0]
-            version = package_parts[1] if len(package_parts) > 1 else "default"
-            return ["conda", package, version, channel]
-
-        raise ValueError(f"Unable to parse conda command: '{command}'.")
+            package = package_info[0]
+            return [parts[0], package, parts[3]]
 
     def _get_commands(self):
         """

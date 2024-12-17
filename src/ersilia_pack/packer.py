@@ -5,7 +5,6 @@ import datetime
 import uuid
 import subprocess
 import json
-import yaml
 import urllib.request
 from .utils import logger
 from .parsers import YAMLInstallParser, DockerfileInstallParser, MetadataYml2JsonConverter
