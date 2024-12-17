@@ -2,6 +2,7 @@ import os
 import re
 import textwrap
 
+from ..utils import eval_conda_prefix
 
 class InstallParser:
     def __init__(self, file_name, conda_env_name=None):
@@ -15,13 +16,8 @@ class InstallParser:
     def _get_commands(self):
         raise NotImplementedError("Implement this in subclass")
     
-    @staticmethod
-    def _eval_conda_prefix():
-        # This returns an empty string if conda is not discoverable
-        return os.popen("conda info --base").read().strip()
-    
     def get_python_exe(self):
-        conda_prefix = self._eval_conda_prefix()
+        conda_prefix = eval_conda_prefix()
         if not conda_prefix:
             return "python"
         if self.conda_env_name is None:
@@ -79,7 +75,7 @@ class InstallParser:
         lines = []
         commands = self._get_commands()
         has_conda = self._has_conda(commands)
-        conda_prefix = self._eval_conda_prefix()
+        conda_prefix = eval_conda_prefix()
         python_exe = self.get_python_exe()
         for command in commands:
             if isinstance(command, list):
