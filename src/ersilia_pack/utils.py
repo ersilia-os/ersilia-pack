@@ -1,5 +1,6 @@
-import socket
 import logging
+import os
+import socket
 
 def find_free_port(host='localhost'):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -13,5 +14,9 @@ def get_logger():
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
     return logger
+
+def eval_conda_prefix():
+    # This returns an empty string if conda is not discoverable
+    return os.popen("conda info --base").read().strip()
 
 logger = get_logger()
