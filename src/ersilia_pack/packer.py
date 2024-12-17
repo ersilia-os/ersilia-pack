@@ -171,10 +171,6 @@ class FastApiAppPacker(object):
             with open(os.path.join(self.bundle_dir, "app", "main.py"), "w") as f:
                 f.write(body_txt)
             return
-        api_names = self._get_api_names_from_artifact()
-        if len(api_names) > 0:
-            logger.info("API names from artifact")
-            # TODO
 
     def _write_install_file(self):
         if not self.install_writer.check_file_exists():
