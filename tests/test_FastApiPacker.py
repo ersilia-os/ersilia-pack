@@ -45,7 +45,7 @@ def test_get_model_id_with_json(temp_model_directory, bundles_repo_path):
 
 def test_get_model_id_with_yaml(temp_model_directory, bundles_repo_path):
     metadata_file = temp_model_directory / "metadata.yml"
-    metadata_file.write_text(yaml.dump({"Identifier": "test_model_id", "Slug": "test_slug"}))
+    metadata_file.write_text(yaml.dump({"Identifier": "test_model_id", "Slug": "test_slug", "Title": "test_model_title", "Description": "test_model_description" }))
 
     install_file = temp_model_directory / "install.yml"  # Add install.yml
     install_file.write_text(yaml.dump({"python": "3.8", "pip": ["numpy"]}))
