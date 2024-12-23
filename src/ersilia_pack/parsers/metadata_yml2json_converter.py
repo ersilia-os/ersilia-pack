@@ -22,32 +22,28 @@ class MetadataYml2JsonConverter:
 
     def convert(self):
         data = collections.OrderedDict()
-        
-        # Use .get() to handle missing keys
-        data["Identifier"] = self._tostr(self.data.get("Identifier", "default_id"))
-        data["Slug"] = self._tostr(self.data.get("Slug", "default_slug"))
-        data["Status"] = self._tostr(self.data.get("Status", "default_status"))
-        data["Title"] = self._tostr(self.data.get("Title", "default_title"))
-        data["Description"] = self._tostr(self.data.get("Description", "default_description"))
-        data["Mode"] = self._tostr(self.data.get("Mode", "default_mode"))
-        data["Input"] = self._tolist(self.data.get("Input", []))
-        data["Input Shape"] = self._tostr(self.data.get("Input Shape", "default_shape"))
-        data["Task"] = self._tolist(self.data.get("Task", []))
-        data["Output"] = self._tolist(self.data.get("Output", []))
-        data["Output Type"] = self._tolist(self.data.get("Output Type", []))
-        data["Output Shape"] = self._tostr(self.data.get("Output Shape", "default_output_shape"))
-        data["Interpretation"] = self._tostr(self.data.get("Interpretation", "default_interpretation"))
-        data["Framework"] = self._tostr(self.data.get("Framework", "default_framework"))
-        data["Code"] = self._tostr(self.data.get("Code", "default_code"))
-        data["License"] = self._tostr(self.data.get("License", "default_license"))
-        data["Email"] = self._tostr(self.data.get("Email", "default_email"))
-        data["Version"] = self._tostr(self.data.get("Version", "default_version"))
-        data["Tags"] = self._tolist(self.data.get("Tags", []))
+        data["Identifier"] = self._tostr(self.data["Identifier"])
+        data["Slug"] = self._tostr(self.data["Slug"])
+        if "Status" in self.data:
+            data["Status"] = self._tostr(self.data["Status"])
+        data["Title"] = self._tostr(self.data["Title"])
+        data["Description"] = self._tostr(self.data["Description"])
+        data["Mode"] = self._tostr(self.data["Mode"])
+        data["Input"] = self._tolist(self.data["Input"])
+        data["Input Shape"] = self._tostr(self.data["Input Shape"])
+        data["Task"] = self._tolist(self.data["Task"])
+        data["Output"] = self._tolist(self.data["Output"])
+        data["Output Type"] = self._tolist(self.data["Output Type"])
+        data["Output Shape"] = self._tostr(self.data["Output Shape"])
+        data["Interpretation"] = self._tostr(self.data["Interpretation"])
+        data["Framework"] = self._tostr(self.data["Framework"])
+        data["Code"] = self._tostr(self.data["Code"])
+        data["License"] = self._tostr(self.data["License"])
+        data["Email"] = self._tostr(self.data["Email"])
+        data["Version"] = self._tostr(self.data["Version"])
+        data["Tags"] = self._tolist(self.data["Tags"])
 
         if self.json_file is None:
             self.json_file = self.yml_file.replace(".yml", ".json")
-        
         with open(self.json_file, 'w') as f:
             json.dump(data, f, indent=4)
-
-        return data
