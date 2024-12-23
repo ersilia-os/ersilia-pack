@@ -13,9 +13,9 @@ root = os.path.dirname(os.path.abspath(__file__))
 
 class FastApiAppPacker(object):
     def __init__(self, repo_path, bundles_repo_path, conda_env_name=None):
+        self.root = os.path.dirname(os.path.abspath(__file__))
         self.dest_dir = repo_path
         self.bundles_repo_path = bundles_repo_path
-        self.src_dir = os.path.join(os.path.dirname(__file__), 'src', 'ersilia_pack')
         if not os.path.exists(self.dest_dir):
             raise Exception("Model path {0} does not exist".format(self.dest_dir))
         self.model_id = self._get_model_id()
@@ -125,20 +125,20 @@ class FastApiAppPacker(object):
         if not os.path.exists(os.path.join(self.bundle_dir, "app")):
             os.makedirs(os.path.join(self.bundle_dir, "app"))
         shutil.copy(
-        os.path.join(self.src_dir, "templates", "app.py"),
-        os.path.join(self.bundle_dir, "app", "main.py"),
-    )
+            os.path.join(self.root, "templates", "app.py"),
+            os.path.join(self.bundle_dir, "app", "main.py"),
+        )
         init_file_path = os.path.join(self.bundle_dir, "app", "__init__.py")
         with open(init_file_path, "w") as f:
             pass
         shutil.copy(
-        os.path.join(self.src_dir, "templates", "run_uvicorn.py"),
-        os.path.join(self.bundle_dir, "run_uvicorn.py"),
-    )
+            os.path.join(self.root, "templates", "run_uvicorn.py"),
+            os.path.join(self.bundle_dir, "run_uvicorn.py"),
+        )
         shutil.copy(
-        os.path.join(self.src_dir, "templates", "utils.py"),
-        os.path.join(self.bundle_dir, "app", "utils.py"),
-    )
+            os.path.join(self.root, "templates", "utils.py"),
+            os.path.join(self.bundle_dir, "app", "utils.py"),
+        )
 
     def _edit_post_commands_app(self):
         api_names = self._get_api_names_from_sh()
