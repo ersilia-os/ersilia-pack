@@ -51,4 +51,4 @@ class MetadataYml2JsonConverter:
         if self.json_file is None:
             return data
         with open(self.json_file, 'w') as f:
-            f.write(json.dumps(data, indent=4))
+            json.dump(data, f, indent=4)

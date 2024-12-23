@@ -13,6 +13,7 @@ root = os.path.dirname(os.path.abspath(__file__))
 
 class FastApiAppPacker(object):
     def __init__(self, repo_path, bundles_repo_path, conda_env_name=None):
+        self.root = os.path.dirname(os.path.abspath(__file__))
         self.dest_dir = repo_path
         self.bundles_repo_path = bundles_repo_path
         if not os.path.exists(self.dest_dir):
@@ -124,18 +125,18 @@ class FastApiAppPacker(object):
         if not os.path.exists(os.path.join(self.bundle_dir, "app")):
             os.makedirs(os.path.join(self.bundle_dir, "app"))
         shutil.copy(
-            os.path.join(root, "templates", "app.py"),
+            os.path.join(self.root, "templates", "app.py"),
             os.path.join(self.bundle_dir, "app", "main.py"),
         )
         init_file_path = os.path.join(self.bundle_dir, "app", "__init__.py")
         with open(init_file_path, "w") as f:
             pass
         shutil.copy(
-            os.path.join(root, "templates", "run_uvicorn.py"),
+            os.path.join(self.root, "templates", "run_uvicorn.py"),
             os.path.join(self.bundle_dir, "run_uvicorn.py"),
         )
         shutil.copy(
-            os.path.join(root, "templates", "utils.py"),
+            os.path.join(self.root, "templates", "utils.py"),
             os.path.join(self.bundle_dir, "app", "utils.py"),
         )
 
