@@ -36,14 +36,19 @@ class MetadataYml2JsonConverter:
         data["Output Type"] = self._tolist(self.data["Output Type"])
         data["Output Shape"] = self._tostr(self.data["Output Shape"])
         data["Interpretation"] = self._tostr(self.data["Interpretation"])
-        data["Framework"] = self._tostr(self.data["Framework"])
-        data["Code"] = self._tostr(self.data["Code"])
+        data["Tag"] = self._tolist(self.data["Tag"])
+        data["Publication"] = self._tostr(self.data["Publication"])
+        data["Source Code"] = self._tostr(self.data["Source Code"])
         data["License"] = self._tostr(self.data["License"])
-        data["Email"] = self._tostr(self.data["Email"])
-        data["Version"] = self._tostr(self.data["Version"])
-        data["Tags"] = self._tolist(self.data["Tags"])
-
+        if "Contributor" in self.data:
+            data["Contributor"] = self._tostr(self.data["Contributor"])
+        if "S3" in self.data:
+            data["S3"] = self._tostr(self.data["S3"])
+        if "DockerHub" in self.data:
+            data["DockerHub"] = self._tostr(self.data["DockerHub"])
+        if "Docker Architecture" in self.data:
+            data["Docker Architecture"] = self._tolist(self.data["Docker Architecture"])
         if self.json_file is None:
-            self.json_file = self.yml_file.replace(".yml", ".json")
+            return data
         with open(self.json_file, 'w') as f:
             json.dump(data, f, indent=4)
