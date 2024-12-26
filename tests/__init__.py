@@ -6,5 +6,5 @@
 from src.ersilia_pack.parsers.install_parser import InstallParser
 from src.ersilia_pack.parsers.dockerfile_install_parser import DockerfileInstallParser
 from src.ersilia_pack.parsers.yaml_install_parser import YAMLInstallParser
-
+from src.ersilia_pack.parsers.metadata_yml2json_converter import MetadataYml2JsonConverter
 
