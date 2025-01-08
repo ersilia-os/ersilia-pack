@@ -5,20 +5,17 @@ import datetime
 import uuid
 import subprocess
 import json
-import yaml
 import urllib.request
 from .utils import logger
 from .parsers import YAMLInstallParser, DockerfileInstallParser, MetadataYml2JsonConverter
-import signal
 
 root = os.path.dirname(os.path.abspath(__file__))
 
 class FastApiAppPacker(object):
     def __init__(self, repo_path, bundles_repo_path, conda_env_name=None):
+        self.root = os.path.dirname(os.path.abspath(__file__))
         self.dest_dir = repo_path
         self.bundles_repo_path = bundles_repo_path
-        self.should_terminate = False
-        signal.signal(signal.SIGINT, self.signal_handler)
         if not os.path.exists(self.dest_dir):
             raise Exception("Model path {0} does not exist".format(self.dest_dir))
         self.model_id = self._get_model_id()
@@ -28,7 +25,7 @@ class FastApiAppPacker(object):
             os.path.join(self.bundles_repo_path, self.model_id)
         )
         if os.path.exists(self.bundle_dir):
-            logger.info("Folder {0} existed. Removing it".format(self.bundle_dir))
+            logger.debug("Folder {0} existed. Removing it".format(self.bundle_dir))
             shutil.rmtree(self.bundle_dir)
         self.bundle_dir = os.path.join(self.bundle_dir, timestamp)
         os.makedirs(self.bundle_dir)
@@ -41,21 +38,10 @@ class FastApiAppPacker(object):
             self.install_writer = YAMLInstallParser(self.dest_dir, conda_env_name)
         else:
             raise Exception("No install file found") # TODO implement better exceptions
-    def signal_handler(self, signum, frame):
-        logger.info("Termination signal received, stopping the installation")
-        self.should_terminate = True
+
     def _get_model_id(self):
-        json_file = os.path.join(self.dest_dir, "metadata.json")
-        if os.path.exists(json_file):
-            with open(json_file, "r") as f:
-                data = json.load(f)
-                return data["Identifier"]
-        yml_file = os.path.join(self.dest_dir, "metadata.yml")
-        if os.path.exists(yml_file):
-            with open(yml_file, "r") as f:
-                data = yaml.safe_load(f)
-                return data["Identifier"]
-        raise Exception("No metadata file found")
+        data = self._load_metadata()
+        return data["Identifier"]
 
     def _get_favicon(self):
         dest_folder = os.path.join(self.bundle_dir, "static")
@@ -69,16 +55,16 @@ class FastApiAppPacker(object):
         try:
             # Download the file from the URL
             urllib.request.urlretrieve(url, file_path)
-            logger.info(f"File downloaded and saved to {file_path}")
+            logger.debug(f"File downloaded and saved to {file_path}")
         except Exception as e:
             logger.error(f"Failed to download file. Error: {e}")
 
     def _create_bundle_structure(self):
-        logger.info("Copying model")
+        logger.debug("Copying model")
         shutil.copytree(
             os.path.join(self.dest_dir, "model"), os.path.join(self.bundle_dir, "model")
         )
-        logger.info("Copying the favicon")
+        logger.debug("Copying the favicon")
 
     def _load_metadata(self):
         json_file = os.path.join(self.dest_dir, "metadata.json")
@@ -93,7 +79,7 @@ class FastApiAppPacker(object):
         raise Exception("No metadata file found")
 
     def _get_info(self):
-        logger.info("Getting info from metadata")
+        logger.debug("Getting info from metadata")
         data = self._load_metadata()
         info = {}
         info["card"] = data
@@ -108,7 +94,7 @@ class FastApiAppPacker(object):
         self.info = info
 
     def _get_input_schema(self):
-        logger.info(self.info)
+        logger.debug(self.info)
         input_entity = self.info["card"]["Input"]
         if len(input_entity) > 1:
             return
@@ -139,18 +125,18 @@ class FastApiAppPacker(object):
         if not os.path.exists(os.path.join(self.bundle_dir, "app")):
             os.makedirs(os.path.join(self.bundle_dir, "app"))
         shutil.copy(
-            os.path.join(root, "templates", "app.py"),
+            os.path.join(self.root, "templates", "app.py"),
             os.path.join(self.bundle_dir, "app", "main.py"),
         )
         init_file_path = os.path.join(self.bundle_dir, "app", "__init__.py")
         with open(init_file_path, "w") as f:
             pass
         shutil.copy(
-            os.path.join(root, "templates", "run_uvicorn.py"),
+            os.path.join(self.root, "templates", "run_uvicorn.py"),
             os.path.join(self.bundle_dir, "run_uvicorn.py"),
         )
         shutil.copy(
-            os.path.join(root, "templates", "utils.py"),
+            os.path.join(self.root, "templates", "utils.py"),
             os.path.join(self.bundle_dir, "app", "utils.py"),
         )
 
@@ -171,17 +157,13 @@ class FastApiAppPacker(object):
             with open(os.path.join(self.bundle_dir, "app", "main.py"), "w") as f:
                 f.write(body_txt)
             return
-        api_names = self._get_api_names_from_artifact()
-        if len(api_names) > 0:
-            logger.info("API names from artifact")
-            # TODO
 
     def _write_install_file(self):
         if not self.install_writer.check_file_exists():
             logger.warning(f"Install file {self.install_writer.file_type} does not exist")
             return
         if os.path.exists(self.sh_file):
-            logger.info("Install file already exists")
+            logger.debug("Install file already exists")
             return
         self.install_writer.write_bash_script(self.sh_file)
 
@@ -193,20 +175,8 @@ class FastApiAppPacker(object):
 
     def _install_packages(self):
         cmd = f"bash {self.sh_file}"
-        process = subprocess.Popen(cmd, shell=True).wait()
+        subprocess.Popen(cmd, shell=True).wait()
 
-        while True:
-            if self.should_terminate:
-                process.terminate()
-                logger.info("Installation process terminated by user.")
-                break
-            else:
-                retcode = process.poll()
-                if retcode is not None:
-                    logger.info("installation completed successfully.")
-                else:
-                    logger.error(f"Installation failed with return code {retcode}")
-                break
     def _modify_python_exe(self):
         python_exe = self.install_writer.get_python_exe()
         with open(os.path.join(self.bundle_dir, "model", "framework", "run.sh"), "r") as f:

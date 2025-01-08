@@ -1,0 +1,7 @@
+Identifier: model-001
+Slug: "example-slug"
+Title: ["Multiple", "Titles"]  # Invalid: Should be a string, not a list
+Description: "An example model."
+Mode: classification
+Input: "input.csv"
+Task: "classification"  # Invalid: Should be a list

@@ -1,0 +1,27 @@
+Identifier: model-001
+Slug: my-model
+Status: active
+Title: A Sample Model
+Description: This is a test model.
+Mode: classification
+Input: input.csv
+Input Shape: (100,)
+Task: 
+  - classification
+Output: 
+  - output.csv
+Output Type: 
+  - probability
+Output Shape: (100,)
+Interpretation: Interpretation text
+Tag: 
+  - test
+Publication: https://example.com/publication
+Source Code: https://github.com/example/repo
+License: MIT
+Contributor: John Doe
+S3: s3://example-bucket
+DockerHub: dockerhub/example-repo
+Docker Architecture: 
+  - amd64
+  - arm64

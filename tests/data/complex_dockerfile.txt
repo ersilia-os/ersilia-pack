@@ -1,0 +1,9 @@
+FROM bentoml/model-server:0.11.0-py39
+MAINTAINER ersilia
+
+RUN pip install rdkit==2024.3.5
+RUN pip install git+https://github.com/example.git
+RUN pip install torch==2.4.1 --index-url https://download.pytorch.org/whl/cpu
+
+WORKDIR /repo
+COPY . /repo
