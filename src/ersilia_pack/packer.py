@@ -219,10 +219,22 @@ class FastApiAppPacker(object):
         output_type = resolve_output_meta_in_schema(
             metadata["Output Type"], metadata["Output Shape"]
         )
-        with open(os.path.join(
-            self.bundle_dir, "model", "framework", "examples", "output.csv"), 
-            "r") as f:
-            example_output=f.readlines()[0]
+        
+        api_names = self._get_api_names_from_sh()
+        possible_filenames = [f"{api_name}_output.csv" for api_name in api_names] + ["output.csv"]
+    
+        output_file = None
+        for filename in possible_filenames:
+            path = os.path.join(self.bundle_dir, "model", "framework", "examples", filename)
+            if os.path.exists(path):
+                output_file = path
+                break
+
+        if not output_file:
+            raise FileNotFoundError("No example output file found (e.g., run_output.csv, output.csv).")
+
+        with open(output_file, "r") as f:
+            example_output = f.readlines()[0]
         
         shape = len(example_output.split(","))
         meta = example_output.split(",")

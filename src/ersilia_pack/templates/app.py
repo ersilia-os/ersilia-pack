@@ -21,6 +21,19 @@ from input_schema import InputSchema, exemplary_input
 from utils import orient_to_json
 
 
+def get_prefix_from_info():
+    """
+    Extract the prefix from the get_info API.
+    """
+    info_response = get_info() 
+    api_names = info_response.json().get("apis_list", [])
+
+    if not api_names:
+        raise HTTPException(status_code=404, detail="No API names found.")
+
+    return api_names[0]
+
+
 with open(os.path.join(bundle_folder, "information.json"), "r") as f:
     info_data = json.load(f)
 
@@ -110,38 +123,57 @@ def input_shape():
 @app.get("/example/input", tags=["Metadata"])
 def example_input():
     """
-    Get a predefined input example
-
+    Get a predefined input example.
     """
     input_list = []
-    with open(os.path.join(framework_folder, "examples", "input.csv"), "r") as f:
+    prefix = get_prefix_from_info()
+    file_to_open = None
+   
+    if os.path.exists(os.path.join(framework_folder, "examples", f"{prefix}_input.csv")):
+        file_to_open = os.path.join(framework_folder, "examples", f"{prefix}_input.csv")
+    elif os.path.exists(os.path.join(framework_folder, "examples", "input.csv")):
+        file_to_open = os.path.join(framework_folder, "examples", "input.csv")
+    else:
+        raise HTTPException(status_code=404, detail="Example input file not found.")
+
+    with open(file_to_open, "r") as f:
         reader = csv.reader(f)
         next(reader)
-        for r in reader:
-            input_list += r
+        for row in reader:
+            input_list += row
+
     return input_list
 
 
 @app.get("/example/output", tags=["Metadata"])
 def example_output(orient: OrientEnum = Query(OrientEnum.records)):
     """
-    Get a precalculated example output
-
+    Get a precalculated example output.
     """
     output_list = []
-    with open(os.path.join(framework_folder, "examples", "output.csv"), "r") as f:
+    prefix = get_prefix_from_info()
+    file_to_open = None
+
+    if os.path.exists(os.path.join(framework_folder, "examples", f"{prefix}_output.csv")):
+        file_to_open = os.path.join(framework_folder, "examples", f"{prefix}_output.csv")
+    elif os.path.exists(os.path.join(framework_folder, "examples", "output.csv")):
+        file_to_open = os.path.join(framework_folder, "examples", "output.csv")
+    else:
+        raise HTTPException(status_code=404, detail="Example output file not found.")
+ 
+    with open(file_to_open, "r") as f:
         reader = csv.reader(f)
         columns = next(reader)
         for r in reader:
             output_list += [r]
-
-    with open(os.path.join(framework_folder, "examples", "output.csv"), "r") as f:
+ 
+    with open(file_to_open, "r") as f:
         reader = csv.reader(f)
-        next(reader)
+        next(reader)  # Skip the header
         index = []
         for r in reader:
             index += [r[0]]
-
+ 
     response = orient_to_json(output_list, columns, index, orient, output_type)
     return response
 
@@ -149,10 +181,19 @@ def example_output(orient: OrientEnum = Query(OrientEnum.records)):
 @app.get("/columns/input", tags=["Metadata"])
 def columns_input():
     """
-    Get the header of the input
-
+    Get the header of the input.
     """
-    with open(os.path.join(framework_folder, "examples", "input.csv"), "r") as f:
+    prefix = get_prefix_from_info()
+    file_to_open = None
+
+    if os.path.exists(os.path.join(framework_folder, "examples", f"{prefix}_input.csv")):
+        file_to_open = os.path.join(framework_folder, "examples", f"{prefix}_input.csv")
+    elif os.path.exists(os.path.join(framework_folder, "examples", "input.csv")):
+        file_to_open = os.path.join(framework_folder, "examples", "input.csv")
+    else:
+        raise HTTPException(status_code=404, detail="Input example file not found.")
+  
+    with open(file_to_open, "r") as f:
         reader = csv.reader(f)
         return next(reader)
 
@@ -160,10 +201,19 @@ def columns_input():
 @app.get("/columns/output", tags=["Metadata"])
 def columns_output():
     """
-    Get the header of the output
-
+    Get the header of the output.
     """
-    with open(os.path.join(framework_folder, "examples", "output.csv"), "r") as f:
+    prefix = get_prefix_from_info()
+    file_to_open = None
+
+    if os.path.exists(os.path.join(framework_folder, "examples", f"{prefix}_output.csv")):
+        file_to_open = os.path.join(framework_folder, "examples", f"{prefix}_output.csv")
+    elif os.path.exists(os.path.join(framework_folder, "examples", "output.csv")):
+        file_to_open = os.path.join(framework_folder, "examples", "output.csv")
+    else:
+        raise HTTPException(status_code=404, detail="Output example file not found.")
+
+    with open(file_to_open, "r") as f:
         reader = csv.reader(f)
         return next(reader)
 
