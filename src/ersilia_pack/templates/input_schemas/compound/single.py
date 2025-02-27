@@ -1,18 +1,15 @@
-import os
-import csv
-from typing import List, Dict, Union
+from typing import List, Union
 
+from pydantic import BaseModel, RootModel
 
-root = os.path.dirname(os.path.abspath(__file__))
-
-def read_example():
-    with open(os.path.join(root, "..", "model", "framework", "examples", "input.csv"), "r") as f:
-        reader = csv.reader(f)
-        next(reader)
-        data = [x[0] for x in reader]
-    return data    
-
+from ...utils import read_example
 
 exemplary_input = read_example()[:3]
 
-InputSchema = Union[List[str], List[Dict[str, str]]]
+
+class InputItem(BaseModel):
+  key: str
+  input: str
+
+
+InputSchema = RootModel[Union[List[str], List[InputItem]]]
