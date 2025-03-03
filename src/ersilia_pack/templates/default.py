@@ -29,10 +29,21 @@ TEMP_FOLDER = tempfile.mkdtemp(prefix="ersilia-")
 BUNDLE_FOLDER = os.path.abspath(os.path.join(ROOT, ".."))
 API_NAMES = get_api_names_from_sh(FRAMEWORK_FOLDER)
 api_name = API_NAMES[0] if isinstance(API_NAMES, list) else API_NAMES
-EXAMPLE_INPUT_PATH = os.path.join(FRAMEWORK_FOLDER, "examples", f"{api_name}_input.csv")
-EXAMPLE_OPUTPUT_PATH = os.path.join(
-  FRAMEWORK_FOLDER, "examples", f"{api_name}_output.csv"
-)
+api_input_path = os.path.join(FRAMEWORK_FOLDER, "examples", f"{api_name}_input.csv")
+generic_input_path = os.path.join(FRAMEWORK_FOLDER, "examples", "input.csv")
+
+api_output_path = os.path.join(FRAMEWORK_FOLDER, "examples", f"{api_name}_output.csv")
+generic_output_path = os.path.join(FRAMEWORK_FOLDER, "examples", "output.csv")
+
+if os.path.exists(api_input_path):
+    EXAMPLE_INPUT_PATH = api_input_path
+else:
+    EXAMPLE_INPUT_PATH = generic_input_path
+
+if os.path.exists(api_output_path):
+    EXAMPLE_OUTPUT_PATH = api_output_path
+else:
+    EXAMPLE_OUTPUT_PATH = generic_output_path
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
 DEFAULT_REDIS_URI = os.getenv("REDIS_URI", "redis://localhost:6379")
@@ -40,7 +51,7 @@ REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_EXPIRATION = int(
   os.getenv("REDIS_EXPIRATION", 3600 * 24 * 7)
-)  # One week just as default
+)  # One week just as default expiration
 MAX_BATCH_SIZE = int(os.getenv("MAX_BATCH_SIZE", 2))
 MAX_WAIT_TIME = os.getenv("MAX_WAIT_TIME", 0.1)
 FAIL_MAX = os.getenv("FAIL_MAX", 6)

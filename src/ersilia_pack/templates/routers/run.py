@@ -15,7 +15,7 @@ from ..default import OrientEnum, ErrorMessages
 from ..default import (
   ROOT,
   EXAMPLE_INPUT_PATH,
-  EXAMPLE_OPUTPUT_PATH,
+  EXAMPLE_OUTPUT_PATH,
   MAX_CPU_PERC,
   MAX_MEM_PERC,
 )
@@ -44,7 +44,7 @@ async def example_output(
   orient: OrientEnum = Query(OrientEnum.RECORDS),
   metdata: dict = Depends(get_metadata),
 ):
-  header, rows = load_csv_data(EXAMPLE_OPUTPUT_PATH)
+  header, rows = load_csv_data(EXAMPLE_OUTPUT_PATH)
 
   index = [row[0] for row in rows]
 
@@ -60,7 +60,7 @@ async def columns_input(request: Request):
 
 @router.get("/run/columns/output", tags=["Run"])
 async def columns_output(request: Request):
-  header = load_csv_data(EXAMPLE_OPUTPUT_PATH)[0]
+  header = load_csv_data(EXAMPLE_OUTPUT_PATH)[0]
   return header
 
 
