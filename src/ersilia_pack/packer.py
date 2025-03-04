@@ -66,7 +66,7 @@ class FastApiAppPacker(object):
         )
         logger.debug("Copying the favicon")
 
-    def _load_metadata(self):
+    def _load_metadata_as_dict_from_file(self):
         json_file = os.path.join(self.dest_dir, "metadata.json")
         if os.path.exists(json_file):
             with open(json_file, "r") as f:
@@ -77,7 +77,13 @@ class FastApiAppPacker(object):
             data = MetadataYml2JsonConverter(yml_file).convert()
             return data
         raise Exception("No metadata file found")
-
+    
+    def _load_metadata(self):
+        data = self._load_metadata_as_dict_from_file()
+        if "Input Shape" not in data:
+            data["Input Shape"] = "Single"
+        return data
+        
     def _get_info(self):
         logger.debug("Getting info from metadata")
         data = self._load_metadata()
