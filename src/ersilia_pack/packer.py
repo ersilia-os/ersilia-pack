@@ -88,7 +88,7 @@ class FastApiAppPacker(object):
             data = MetadataYml2JsonConverter(yml_file).convert()
             return data
         raise Exception("No metadata file found")
-    
+
   def _load_metadata(self):
         data = self._load_metadata_as_dict_from_file()
         if "Input Shape" not in data:
