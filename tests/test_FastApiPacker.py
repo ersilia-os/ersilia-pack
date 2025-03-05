@@ -142,7 +142,7 @@ class TestFastApiPacker:
     @patch("urllib.request.urlretrieve")
     def test_get_favicon(self, mock_urlretrieve, temp_model_directory, bundles_repo_path):
         metadata_file = temp_model_directory / "metadata.json"
-        metadata_file.write_text(json.dumps({"Identifier": "test_model_id"}))
+        metadata_file.write_text(json.dumps({"Identifier": "test_model_id", "Output Type": "Float"}))
 
         install_file = temp_model_directory / "install.yml"
         install_file.write_text(yaml.dump({"python": "3.8", "pip": ["requests"]}))
@@ -161,7 +161,7 @@ class TestFastApiPacker:
     def test_create_bundle_structure(self, temp_model_directory, bundles_repo_path):
         (temp_model_directory / "model" / "test_file.txt").write_text("content")
         metadata_file = temp_model_directory / "metadata.json"
-        metadata_file.write_text(json.dumps({"Identifier": "test_model_id"}))
+        metadata_file.write_text(json.dumps({"Identifier": "test_model_id", "Output Type": "Float"}))
 
         install_file = temp_model_directory / "install.yml"
         install_file.write_text(yaml.dump({"python": "3.8", "pip": ["requests"]}))
@@ -177,14 +177,15 @@ class TestFastApiPacker:
         metadata_file.write_text(json.dumps({
             "Identifier": "test_model_id", 
             "Input": ["Text"], 
-            "Input Shape": "Square"
+            "Input Shape": "Square",
+            "Output Type": "Float"
         }))
 
         install_file = temp_model_directory / "install.yml"
         install_file.write_text(yaml.dump({"python": "3.8", "pip": ["requests"]}))
 
         packer = FastApiAppPacker(str(temp_model_directory), str(bundles_repo_path))
-        packer.info = {"card": {"Input": ["Text"], "Input Shape": "Square"}}
+        packer.info = {"card": {"Input": ["Text"], "Input Shape": "Square", "Output Type": "Float"}}
         packer._get_input_schema()
 
         mock_copy.assert_called_once()
@@ -203,7 +204,7 @@ class TestFastApiPacker:
         
         # Add a metadata.json file
         metadata_file = temp_model_directory / "metadata.json"
-        metadata_file.write_text(json.dumps({"Identifier": "test_model_id"}))
+        metadata_file.write_text(json.dumps({"Identifier": "test_model_id", "Output Type": "Float"}))
         
         # Add an install.yml file
         install_file = temp_model_directory / "install.yml"
@@ -230,7 +231,7 @@ class TestFastApiPacker:
     def test_create_app_files(self, mock_copy, temp_model_directory, bundles_repo_path):
         # Create a metadata.json file
         metadata_file = temp_model_directory / "metadata.json"
-        metadata_file.write_text(json.dumps({"Identifier": "test_model_id"}))
+        metadata_file.write_text(json.dumps({"Identifier": "test_model_id", "Output Type": "Float"}))
 
         # Add a valid install.yml file
         install_file = temp_model_directory / "install.yml"
