@@ -1,11 +1,10 @@
-import asyncio, collections, csv, os, subprocess, psutil, multiprocessing, json
+import asyncio, collections, csv, os, subprocess, psutil, multiprocessing, json, hashlib
 from redis import Redis, ConnectionError
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from .default import (
   ENVIRONMENT,
-  EXAMPLE_INPUT_PATH,
   DEFAULT_REDIS_URI,
   ROOT,
   FRAMEWORK_FOLDER,
@@ -21,12 +20,16 @@ from .default import (
   RESOURCE_SAFETY_MARGIN,
   MODEL_THRESHOLD_FRACTION,
   MODEL_ROOT,
+  generic_example_input_file
 )
 
+def compute_memory_usage() -> float:
+    process = psutil.Process(os.getpid())
+    mem_bytes = process.memory_info().rss
+    return mem_bytes / (1024 * 1024)
 
 def compute_max_model_size_threshold():
   return MODEL_THRESHOLD_FRACTION * available_mem_total()
-
 
 def get_model_dir_size(path):
   total_size = 0
@@ -44,61 +47,94 @@ def get_model_dir_size(path):
     return 0
   return int(total_size)
 
+model_size_byte = get_model_dir_size(MODEL_ROOT)
+
+def make_hashable(obj):
+    if isinstance(obj, list):
+        return tuple(make_hashable(x) for x in obj)
+    elif isinstance(obj, dict):
+        return tuple(sorted((k, make_hashable(v)) for k, v in obj.items()))
+    return obj
 
 def orient_to_json(values, columns, index, orient, output_type):
-  if len(output_type) > 1:
-    output_type = "string"
-  else:
-    output_type = output_type[0].lower()
+    if len(output_type) > 1:
+        output_type = "string"
+    else:
+        output_type = output_type[0].lower()
 
-  def values_serializer(values):
-    if output_type == "string":
-      return [str(x) for x in values]
-    if output_type == "float":
-      return [None if x.strip() == "" else float(x) for x in values]
-    elif output_type == "integer":
-      return [None if x.strip() == "" else int(x) for x in values]
-    return values
+    def values_serializer(values):
+      if output_type == "string":
+          return [str(x) for x in values]
 
-  if orient == "split":
-    data = collections.OrderedDict()
-    data["columns"] = columns
-    data["index"] = index
-    data["data"] = values_serializer(values)
-    return data
+      elif output_type == "float":
+          _values = []
+          for x in values:
+              if isinstance(x, str):
+                  _values.append(float(x) if x != "" else None)
+              elif isinstance(x, (int, float)):
+                  _values.append(float(x))
+              elif isinstance(x, list) and x:
+                  _values.append(float(x[0]))
+              else:
+                  _values.append(None)
+          return _values
 
-  if orient == "records":
-    data = []
-    for i in range(len(values)):
-      record = collections.OrderedDict()
-      for j in range(len(columns)):
-        record[columns[j]] = values_serializer([values[i][j]])[0]
-      data += [record]
-    return data
+      elif output_type == "integer":
+          _values = []
+          for x in values:
+              if isinstance(x, str):
+                  _values.append(int(x) if x != "" else None)
+              elif isinstance(x, (int, float)):
+                  _values.append(int(x))
+              elif isinstance(x, list) and x:
+                  _values.append(int(x[0]))
+              else:
+                  _values.append(None)
+          return _values
 
-  if orient == "index":
-    data = collections.OrderedDict()
-    for i in range(len(index)):
-      record = collections.OrderedDict()
-      for j in range(len(columns)):
-        record[columns[j]] = values_serializer([values[i][j]])[0]
-      data[index[i]] = record
-    return data
+      return values
 
-  if orient == "columns":
-    data = collections.OrderedDict()
-    for j in range(len(columns)):
-      records = collections.OrderedDict()
-      for i in range(len(index)):
-        records[index[i]] = values_serializer([values[i][j]])[0]
-      data[columns[j]] = records
-    return data
 
-  elif orient == "values":
-    return values_serializer(values)
+    if orient == "split":
+        data = collections.OrderedDict()
+        data["columns"] = columns
+        data["index"] = index
+        data["data"] = values_serializer(values)
+        return data
 
-  return None
+    if orient == "records":
+        data = []
+        for i in range(len(values)):
+            record = collections.OrderedDict()
+            for j in range(len(columns)):
+                record[columns[j]] = values_serializer([values[i][j]])[0]
+            data.append(record)
+        return data
 
+    if orient == "index":
+        data = collections.OrderedDict()
+        for i in range(len(index)):
+            record = collections.OrderedDict()
+            for j in range(len(columns)):
+                record[columns[j]] = values_serializer([values[i][j]])[0]
+            key = make_hashable(index[i])
+            data[key] = record
+        return data
+
+    elif orient == "columns":
+        data = collections.OrderedDict()
+        for j in range(len(columns)):
+            records = collections.OrderedDict()
+            for i in range(len(index)):
+                key = make_hashable(index[i])
+                records[key] = values_serializer([values[i][j]])[0]
+            data[columns[j]] = records
+        return data
+
+    elif orient == "values":
+        return values_serializer(values)
+
+    return None
 
 def conn_redis():
   redis_client = Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
@@ -117,6 +153,25 @@ def init_redis():
     print("Redis not connected")
     return False
 
+def get_api_names_from_sh(framework_dir):
+  if not os.path.exists(framework_dir):
+    return
+
+  api_names = []
+  for l in os.listdir(framework_dir):
+    if l.endswith(".sh"):
+      api_names += [l.split(".sh")[0]]
+  if len(api_names) == 0:
+    raise Exception("No API names found. An API should be a .sh file")
+  return api_names
+
+def get_example_path(example_file): 
+  example_path = os.path.join(FRAMEWORK_FOLDER, "examples", example_file)
+  api_name = get_api_names_from_sh(FRAMEWORK_FOLDER)[0]
+  if not os.path.exists(example_path):
+    example_path = os.path.join(FRAMEWORK_FOLDER, "examples", f"{api_name}_{example_file}")
+    return example_path
+  return example_path
 
 async def load_card_metadata(bundle_folder: str):
   file_path = os.path.join(bundle_folder, "information.json")
@@ -135,11 +190,11 @@ async def get_metadata():
 
 
 def read_example():
-  if not os.path.exists(EXAMPLE_INPUT_PATH):
-    print("Examplery input. Path is not existed")
+  example_input_path = get_example_path(generic_example_input_file)
+  if not os.path.exists(example_input_path):
     return []
 
-  with open(EXAMPLE_INPUT_PATH, "r") as f:
+  with open(example_input_path, "r") as f:
     reader = csv.reader(f)
     next(reader)
     data = [x[0] for x in reader]
@@ -147,7 +202,8 @@ def read_example():
 
 
 def load_csv_data(file_path: str):
-  with open(file_path, "r") as f:
+  example_input_path = get_example_path(file_path)
+  with open(example_input_path, "r") as f:
     reader = csv.reader(f)
     header = next(reader)
     rows = list(reader)
@@ -204,7 +260,6 @@ def split_data(data, num_chunks):
 
 def resource_planner(data, max_workers):
   mem_size = int(available_mem() * RESOURCE_SAFETY_MARGIN)
-  model_size_byte = get_model_dir_size(MODEL_ROOT)
   max_workers_memory = max(1, int(mem_size // model_size_byte))
   cpu_count = get_cpu_count(False)
   data_constraint = len(data) if len(data) > 0 else 1
@@ -244,6 +299,7 @@ def run_in_parallel(num_workers, timeout, tag, chunks):
 
 def compute_parallel(data, tag, timeout, max_workers, min_workers):
   num_workers = compute_num_workers(data, max_workers, min_workers)
+  os.environ["MAX_WORKERS"] = num_workers
   chunks = split_data(data, num_workers)
   return run_in_parallel(num_workers, timeout, tag, chunks)
 
@@ -253,7 +309,6 @@ def run_sequential_data(tag, data):
 
 
 def is_parallel_amenable(data):
-  model_size_byte = get_model_dir_size(MODEL_ROOT)
   model_size_thres = compute_max_model_size_threshold()
   if model_size_byte > model_size_thres and len(data) >= int(DATA_SIZE_LOWERBOUND):
     return True
@@ -297,9 +352,15 @@ def process_chunk(chunk, chunk_idx, base_tag):
         os.remove(fpath)
   return results, header
 
+def generate_redis_key(raw_string):
+    return hashlib.md5(raw_string.encode()).hexdigest()
 
 def fetch_cached_results(model_id, data):
-  result_keys = [f"{model_id}:{item['key']}" for item in data]
+  if "input" in data:
+    result_keys = [generate_redis_key(f"{model_id}:{item['input']}") for item in data]
+  else:
+    result_keys = [generate_redis_key(f"{model_id}:{item}") for item in data]
+
   cached_results = redis_client.mget(result_keys)
   results = []
   missing_inputs = []
@@ -315,8 +376,12 @@ def fetch_cached_results(model_id, data):
 
 def cache_missing_results(model_id, missing_inputs, computed_results):
   for item, result in zip(missing_inputs, computed_results):
-    result_key = f"{model_id}:{item['key']}"
-    redis_client.setex(result_key, REDIS_EXPIRATION, json.dumps(result))
+    if "input" in item: 
+      result_key = f"{model_id}:{item['input']}"
+    else:
+      result_key = f"{model_id}:{item}"
+      result_key = generate_redis_key(result_key)
+      redis_client.setex(result_key, REDIS_EXPIRATION, json.dumps(result))
 
 
 def fetch_or_cache_header(model_id, computed_headers=None):
@@ -335,10 +400,6 @@ def fetch_or_cache_header(model_id, computed_headers=None):
 
 
 def get_cached_or_compute(model_id, data, tag, timeout, max_workers, min_workers):
-  if not input_has_key(data):
-    inputs = extract_input(data)
-    return compute_results(inputs, tag, timeout, max_workers, min_workers)
-
   if not init_redis():
     inputs = extract_input(data)
     return compute_results(inputs, tag, timeout, max_workers, min_workers)

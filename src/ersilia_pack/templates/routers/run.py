@@ -14,8 +14,8 @@ from ..exceptions.errors import breaker
 from ..default import OrientEnum, ErrorMessages
 from ..default import (
   ROOT,
-  EXAMPLE_INPUT_PATH,
-  EXAMPLE_OUTPUT_PATH,
+  generic_example_input_file,
+  generic_example_output_file,
   MAX_CPU_PERC,
   MAX_MEM_PERC,
 )
@@ -33,7 +33,7 @@ async def example_input(
   orient: OrientEnum = Query(OrientEnum.RECORDS),
   metdata: dict = Depends(get_metadata),
 ):
-  rows = load_csv_data(EXAMPLE_INPUT_PATH)[1]
+  rows = load_csv_data(generic_example_input_file)[1]
   inputs = [element for row in rows for element in row]
   return inputs
 
@@ -44,7 +44,7 @@ async def example_output(
   orient: OrientEnum = Query(OrientEnum.RECORDS),
   metdata: dict = Depends(get_metadata),
 ):
-  header, rows = load_csv_data(EXAMPLE_OUTPUT_PATH)
+  header, rows = load_csv_data(generic_example_output_file)
 
   index = [row[0] for row in rows]
 
@@ -54,13 +54,13 @@ async def example_output(
 
 @router.get("/run/columns/input", tags=["Run"])
 async def columns_input(request: Request):
-  header = load_csv_data(EXAMPLE_INPUT_PATH)[0]
+  header = load_csv_data(generic_example_input_file)[0]
   return header
 
 
 @router.get("/run/columns/output", tags=["Run"])
 async def columns_output(request: Request):
-  header = load_csv_data(EXAMPLE_OUTPUT_PATH)[0]
+  header = load_csv_data(generic_example_output_file)[0]
   return header
 
 

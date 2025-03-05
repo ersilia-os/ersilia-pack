@@ -71,11 +71,6 @@ async def startup_event():
   init_redis()
 
 
-@app.get("/", tags=["Root"])
-async def read_root(request: Request, metadata: Dict[str, Any] = Depends(get_metadata)):
-  return {metadata["Identifier"]: metadata["Slug"]}
-
-
 register_exception_handlers(app)
 app.add_middleware(RequestContextMiddleware)
 

@@ -1,21 +1,18 @@
-import os, tempfile, traceback
+import os, tempfile, traceback, uuid
+from datetime import datetime
 from fastapi.responses import JSONResponse
+from typing import List
 from enum import Enum
+from pydantic import BaseModel
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-
-
-def get_api_names_from_sh(framework_dir):
-  if not os.path.exists(framework_dir):
-    return
-
-  api_names = []
-  for l in os.listdir(framework_dir):
-    if l.endswith(".sh"):
-      api_names += [l.split(".sh")[0]]
-  if len(api_names) == 0:
-    raise Exception("No API names found. An API should be a .sh file")
-  return api_names
+MODEL_VERSION = os.environ.get("MODEL_VERSION", "1.0")
+RUNTIME = os.environ.get("RUNTIME", "python")
+MIN_WORKERS = int(os.environ.get("MIN_WORKERS", "1"))
+MAX_WORKERS = int(os.environ.get("MAX_WORKERS", "1"))
+BATCH_SIZE = int(os.environ.get("BATCH_SIZE", "10000"))
+MAX_BATCH_DELAY = int(os.environ.get("MAX_BATCH_DELAY", "5000"))
+LOADED_AT_STARTUP = os.environ.get("LOADED_AT_STARTUP", "False").lower() in ("true", "1", "yes")
 
 
 REDOC_JS_URL = "https://unpkg.com/redoc@next/bundles/redoc.standalone.js"
@@ -27,23 +24,8 @@ FRAMEWORK_FOLDER = os.path.abspath(os.path.join(ROOT, "..", "model", "framework"
 MODEL_ROOT = os.path.abspath(os.path.join(ROOT, "..", "model"))
 TEMP_FOLDER = tempfile.mkdtemp(prefix="ersilia-")
 BUNDLE_FOLDER = os.path.abspath(os.path.join(ROOT, ".."))
-API_NAMES = get_api_names_from_sh(FRAMEWORK_FOLDER)
-api_name = API_NAMES[0] if isinstance(API_NAMES, list) else API_NAMES
-api_input_path = os.path.join(FRAMEWORK_FOLDER, "examples", f"{api_name}_input.csv")
-generic_input_path = os.path.join(FRAMEWORK_FOLDER, "examples", "input.csv")
-
-api_output_path = os.path.join(FRAMEWORK_FOLDER, "examples", f"{api_name}_output.csv")
-generic_output_path = os.path.join(FRAMEWORK_FOLDER, "examples", "output.csv")
-
-if os.path.exists(api_input_path):
-    EXAMPLE_INPUT_PATH = api_input_path
-else:
-    EXAMPLE_INPUT_PATH = generic_input_path
-
-if os.path.exists(api_output_path):
-    EXAMPLE_OUTPUT_PATH = api_output_path
-else:
-    EXAMPLE_OUTPUT_PATH = generic_output_path
+generic_example_output_file = "output.csv"
+generic_example_input_file = "input.csv"
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
 DEFAULT_REDIS_URI = os.getenv("REDIS_URI", "redis://localhost:6379")
@@ -91,6 +73,28 @@ class CardField(str, Enum):
   description = "Description"
   input = "Input"
 
+
+API_ID = str(uuid.uuid4())
+API_START_TIME = datetime.utcnow().isoformat() + "Z"
+ROOT_ENDPOINT_LOADED = False
+
+class Worker(BaseModel):
+    id: str
+    startTime: str
+    status: str
+    memoryUsage: float 
+    pid: int
+
+class APIInfo(BaseModel):
+    modelName: str
+    modelVersion: str
+    runtime: str
+    minWorkers: int
+    maxWorkers: int
+    maxBatchSize: int
+    maxBatchDelay: int
+    loadedAtStartup: bool
+    workers: List[Worker]
 
 class ErrorMessages(str, Enum):
   CIRCUIT_BREAKER = "Service temporarily unavailable due to high error rate and exited by circuit breaker"
