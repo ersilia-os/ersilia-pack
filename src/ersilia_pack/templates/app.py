@@ -1,178 +1,80 @@
-from fastapi import FastAPI, HTTPException, Query, Body
-from fastapi.responses import FileResponse, JSONResponse
-import uuid
-import json
-import csv
-import os
-import tempfile
-import subprocess
 import sys
-from enum import Enum
 
+from typing import Any, Dict
 
-root = os.path.dirname(os.path.abspath(__file__))
-bundle_folder = os.path.abspath(os.path.join(root, ".."))
-framework_folder = os.path.abspath(os.path.join(root, "..", "model", "framework"))
-tmp_folder = tempfile.mkdtemp(prefix="ersilia-")
-static_dir = os.path.join(bundle_folder, "static")
+from fastapi import Depends, FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator, metrics
+from slowapi.middleware import SlowAPIMiddleware
 
-sys.path.insert(0, root)
-from input_schema import InputSchema, exemplary_input
-from utils import orient_to_json
+from .default import (
+  API_DESCIPTION,
+  ROOT,
+  ENVIRONMENT,
+  ALLOWED_ORIGINS,
+  HISTOGRAM_TIME_INTERVAL,
+)
+from .exceptions.handlers import register_exception_handlers
+from .middleware.rcontext import RequestContextMiddleware
+from .routers import docs, metadata, run, health
+from .utils import get_metadata, create_limiter, init_redis
 
+sys.path.insert(0, ROOT)
 
-with open(os.path.join(bundle_folder, "information.json"), "r") as f:
-    info_data = json.load(f)
+limiter = create_limiter()
 
-output_type = info_data["card"]["Output Type"]
-if output_type is None:
-    output_type = ["String"]
-if type(output_type) is str:
-    output_type = [output_type]
 
 app = FastAPI(
-    title="{0}:{1}".format(info_data["card"]["Identifier"], info_data["card"]["Slug"]),
-    description=info_data["card"]["Description"],
-    version="latest",
+  title="Ersilia Pack Model Server",
+  description=API_DESCIPTION,
+  docs_url=None,
+  redoc_url=None,
 )
 
+instrumentator = Instrumentator(
+  should_group_status_codes=True,
+  should_ignore_untemplated=True,
+  should_respect_env_var=False,
+  inprogress_name="inprogress_requests",
+)
 
-# Output formats (orientations)
+instrumentator.add(metrics.default())
 
-class OrientEnum(str, Enum):
-    records = "records"
-    columns = "columns"
-    values = "values"
-    split = "split"
-    index = "index"
+instrumentator.add(
+  metrics.latency(
+    metric_name="custom_http_request_duration_seconds",
+    metric_doc="Custom latency metric for HTTP requests",
+    buckets=(HISTOGRAM_TIME_INTERVAL),
+  )
+)
 
+instrumentator.add(metrics.request_size())
+instrumentator.add(metrics.response_size())
 
-# Root
+instrumentator.instrument(app).expose(app)
 
-@app.get("/", tags=["Root"])
-def read_root():
-    return {info_data["card"]["Identifier"]: info_data["card"]["Slug"]}
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
 
-
-# Serve the favicon
-@app.get("/favicon.ico", include_in_schema=False)
-async def favicon():
-    """Get the Ersilia favicon."""
-    return FileResponse(os.path.join(static_dir, "favicon.ico"))
-
-
-# Metadata
-
-@app.get("/card", tags=["Metadata"])
-def card():
-    """
-    Get card information
-    """
-    return info_data["card"]
-
-
-@app.get("/card/model_id", tags=["Metadata"])
-def model_id():
-    """
-    Get model identifier
-
-    """
-    return info_data["card"]["Identifier"]
+if ENVIRONMENT == "prod":
+  app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+  )
 
 
-@app.get("/card/slug", tags=["Metadata"])
-def slug():
-    """
-    Get the slug
-
-    """
-    return info_data["card"]["Slug"]
+@app.on_event("startup")
+async def startup_event():
+  init_redis()
 
 
-@app.get("/card/input_type", tags=["Metadata"])
-def input_entity():
-    """
-    Get the input type
+register_exception_handlers(app)
+app.add_middleware(RequestContextMiddleware)
 
-    """
-    return info_data["card"]["Input"]
-
-
-@app.get("/card/input_shape", tags=["Metadata"])
-def input_shape():
-    """
-    Get the input shape
-
-    """
-    return info_data["card"]["Input Shape"]
-
-
-@app.get("/example/input", tags=["Metadata"])
-def example_input():
-    """
-    Get a predefined input example
-
-    """
-    input_list = []
-    with open(os.path.join(framework_folder, "examples", "input.csv"), "r") as f:
-        reader = csv.reader(f)
-        next(reader)
-        for r in reader:
-            input_list += r
-    return input_list
-
-
-@app.get("/example/output", tags=["Metadata"])
-def example_output(orient: OrientEnum = Query(OrientEnum.records)):
-    """
-    Get a precalculated example output
-
-    """
-    output_list = []
-    with open(os.path.join(framework_folder, "examples", "output.csv"), "r") as f:
-        reader = csv.reader(f)
-        columns = next(reader)
-        for r in reader:
-            output_list += [r]
-
-    with open(os.path.join(framework_folder, "examples", "output.csv"), "r") as f:
-        reader = csv.reader(f)
-        next(reader)
-        index = []
-        for r in reader:
-            index += [r[0]]
-
-    response = orient_to_json(output_list, columns, index, orient, output_type)
-    return response
-
-
-@app.get("/columns/input", tags=["Metadata"])
-def columns_input():
-    """
-    Get the header of the input
-
-    """
-    with open(os.path.join(framework_folder, "examples", "input.csv"), "r") as f:
-        reader = csv.reader(f)
-        return next(reader)
-
-
-@app.get("/columns/output", tags=["Metadata"])
-def columns_output():
-    """
-    Get the header of the output
-
-    """
-    with open(os.path.join(framework_folder, "examples", "output.csv"), "r") as f:
-        reader = csv.reader(f)
-        return next(reader)
-
-# TODO this will be extended when we incorporate more APIs 
-@app.get("/info", tags=["Info"])
-def get_info():
-    """
-    Get API information of the model
-    """
-    return JSONResponse(content={"apis_list": ["run"]})
-
-# Post commands
+app.include_router(metadata.router)
+app.include_router(run.router)
+app.include_router(docs.router)
+app.include_router(health.router)

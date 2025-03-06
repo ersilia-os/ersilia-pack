@@ -11,7 +11,12 @@ requires-python = ">=3.8"
 dependencies = [
     "fastapi",
     "PyYAML",
-    "uvicorn[standard]"
+    "uvicorn[standard]",
+    "slowapi",
+    "prometheus-fastapi-instrumentator",
+    "pybreaker",
+    "redis",
+    "psutil"
 ]
 
 [tool.setuptools.packages.find]
