@@ -17,15 +17,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 static_dir = BASE_DIR / "static"
 
 
-@router.get("/info", tags=["Info"])
-async def get_info(metadata: Dict[str, Any] = Depends(get_metadata)):
-  return {
-    "title": metadata["card"]["Identifier"],
-    "description": metadata["card"]["Description"],
-    "version": "latest",
-  }
-
-
 router.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 

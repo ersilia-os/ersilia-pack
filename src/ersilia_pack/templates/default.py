@@ -8,11 +8,15 @@ from pydantic import BaseModel
 ROOT = os.path.dirname(os.path.abspath(__file__))
 MODEL_VERSION = os.environ.get("MODEL_VERSION", "1.0")
 RUNTIME = os.environ.get("RUNTIME", "python")
-MIN_WORKERS = int(os.environ.get("MIN_WORKERS", "1"))
-MAX_WORKERS = int(os.environ.get("MAX_WORKERS", "1"))
-BATCH_SIZE = int(os.environ.get("BATCH_SIZE", "10000"))
-MAX_BATCH_DELAY = int(os.environ.get("MAX_BATCH_DELAY", "5000"))
-LOADED_AT_STARTUP = os.environ.get("LOADED_AT_STARTUP", "False").lower() in ("true", "1", "yes")
+MIN_WORKERS = int(os.environ.get("MIN_WORKERS", 1))
+MAX_WORKERS = int(os.environ.get("MAX_WORKERS", 1))
+BATCH_SIZE = int(os.environ.get("BATCH_SIZE", 10000))
+MAX_BATCH_DELAY = int(os.environ.get("MAX_BATCH_DELAY", 5000))
+LOADED_AT_STARTUP = os.environ.get("LOADED_AT_STARTUP", "False").lower() in (
+  "true",
+  "1",
+  "yes",
+)
 
 
 REDOC_JS_URL = "https://unpkg.com/redoc@next/bundles/redoc.standalone.js"
@@ -58,6 +62,8 @@ else:
     origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()
   ]
 
+OUTPUT_CONSISTENCY = "Output Consistency"
+
 
 class OrientEnum(str, Enum):
   RECORDS = "records"
@@ -78,23 +84,26 @@ API_ID = str(uuid.uuid4())
 API_START_TIME = datetime.utcnow().isoformat() + "Z"
 ROOT_ENDPOINT_LOADED = False
 
+
 class Worker(BaseModel):
-    id: str
-    startTime: str
-    status: str
-    memoryUsage: float 
-    pid: int
+  id: str
+  startTime: str
+  status: str
+  memoryUsage: float
+  pid: int
+
 
 class APIInfo(BaseModel):
-    modelName: str
-    modelVersion: str
-    runtime: str
-    minWorkers: int
-    maxWorkers: int
-    maxBatchSize: int
-    maxBatchDelay: int
-    loadedAtStartup: bool
-    workers: List[Worker]
+  modelName: str
+  modelVersion: str
+  runtime: str
+  minWorkers: int
+  maxWorkers: int
+  maxBatchSize: int
+  maxBatchDelay: int
+  loadedAtStartup: bool
+  workers: List[Worker]
+
 
 class ErrorMessages(str, Enum):
   CIRCUIT_BREAKER = "Service temporarily unavailable due to high error rate and exited by circuit breaker"

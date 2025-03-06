@@ -13,7 +13,7 @@ from .parsers import (
   YAMLInstallParser,
 )
 from .utils import logger
-from .templates.default import generic_example_output_file, FRAMEWORK_FOLDER  
+from .templates.default import generic_example_output_file, FRAMEWORK_FOLDER
 
 root = os.path.dirname(os.path.abspath(__file__))
 
@@ -209,14 +209,12 @@ class FastApiAppPacker(object):
     subprocess.Popen(cmd, shell=True).wait()
 
   def _get_example_output(self, path):
-      with open(
-        os.path.join(
-          self.bundle_dir, "model", "framework", "examples", path
-        ),
-        "r",
-      ) as f:
-        example_output = f.readlines()[0]
-      return example_output
+    with open(
+      os.path.join(self.bundle_dir, "model", "framework", "examples", path),
+      "r",
+    ) as f:
+      example_output = f.readlines()[0]
+    return example_output
 
   def _modify_python_exe(self):
     python_exe = self.install_writer.get_python_exe()
@@ -264,11 +262,15 @@ class FastApiAppPacker(object):
     api_name = api_names[0] if isinstance(api_names, list) else api_names
     api_example_output_file = f"{api_name}_{generic_example_output_file}"
     print(api_example_output_file)
-    if os.path.exists(os.path.join(self.bundle_dir, "model", "framework", "examples", api_example_output_file)):
-        print("Path existed")
-        example_output = self._get_example_output(api_example_output_file)
+    if os.path.exists(
+      os.path.join(
+        self.bundle_dir, "model", "framework", "examples", api_example_output_file
+      )
+    ):
+      print("Path existed")
+      example_output = self._get_example_output(api_example_output_file)
     else:
-        example_output = self._get_example_output(generic_example_output_file)
+      example_output = self._get_example_output(generic_example_output_file)
 
     shape = len(example_output.split(","))
     meta = example_output.split(",")

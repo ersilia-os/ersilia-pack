@@ -26,7 +26,7 @@ limiter = create_limiter()
 
 app = FastAPI(
   title="Ersilia Pack Model Server",
-  description=API_DESCIPTION, 
+  description=API_DESCIPTION,
   docs_url=None,
   redoc_url=None,
 )

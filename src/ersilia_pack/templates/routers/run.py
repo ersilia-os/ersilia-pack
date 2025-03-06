@@ -74,7 +74,6 @@ def run(
   min_workers: int = Query(1, ge=1),
   max_workers: int = Query(1, ge=1),
   metadata: dict = Depends(get_metadata),
-  timeout: Optional[int] = Query(30, gt=0),
 ):
   if (
     psutil.cpu_percent() > MAX_CPU_PERC
@@ -90,7 +89,7 @@ def run(
     raise AppException(status.HTTP_422_UNPROCESSABLE_ENTITY, ErrorMessages.EMPTY_DATA)
   tag = str(uuid.uuid4())
   results, header = get_cached_or_compute(
-    metadata["Identifier"], data, tag, timeout, max_workers, min_workers
+    metadata["Identifier"], data, tag, max_workers, min_workers, metadata
   )
   results = orient_to_json(results, header, data, orient, metadata["Output Type"])
   return results
