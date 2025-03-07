@@ -42,3 +42,4 @@ def test_rate_limiting(create_information_file):
     resp_three = client.get("/card")
     assert resp_three.status_code == 429, f"Expected 429, got {resp_three.status_code}"
     assert "Retry-After" in resp_three.headers, "Missing Retry-After header"
+    
