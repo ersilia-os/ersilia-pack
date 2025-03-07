@@ -176,12 +176,14 @@ def get_api_names_from_sh(framework_dir):
 
 def get_example_path(example_file):
   example_path = os.path.join(FRAMEWORK_FOLDER, "examples", example_file)
-  api_name = get_api_names_from_sh(FRAMEWORK_FOLDER)[0]
-  if not os.path.exists(example_path):
-    example_path = os.path.join(
-      FRAMEWORK_FOLDER, "examples", f"{api_name}_{example_file}"
-    )
-    return example_path
+  api_name = get_api_names_from_sh(FRAMEWORK_FOLDER)
+  if api_name: 
+    api_name = api_name[0]
+    if not os.path.exists(example_path):
+      example_path = os.path.join(
+        FRAMEWORK_FOLDER, "examples", f"{api_name}_{example_file}"
+      )
+      return example_path
   return example_path
 
 
@@ -237,7 +239,8 @@ def create_limiter():
   try:
     conn_redis()
   except ConnectionError:
-    raise ConnectionError("Redis is not initialized!")
+    if ENVIRONMENT == "prod":
+      raise ConnectionError("Redis is not initialized!")
 
   return Limiter(
     key_func=get_remote_address,
