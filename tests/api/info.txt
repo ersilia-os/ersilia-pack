@@ -1,0 +1,42 @@
+{
+    "card": {
+        "Identifier": "eos3b5e",
+        "Slug": "molecular-weight",
+        "Status": "Ready",
+        "Title": "Molecular weight",
+        "Description": "The model is simply an implementation of the function Descriptors.MolWt of the chemoinformatics package RDKIT. It takes as input a small molecule (SMILES) and calculates its molecular weight in g/mol.\n",
+        "Mode": "Pretrained",
+        "Input": [
+            "Compound"
+        ],
+        "Input Shape": "Single",
+        "Task": [
+            "Regression"
+        ],
+        "Output": [
+            "Other value"
+        ],
+        "Output Type": [
+            "Float"
+        ],
+        "Output Shape": "Single",
+        "Interpretation": "Calculated molecular weight (g/mol)",
+        "Tag": [
+            "Molecular weight"
+        ],
+        "Publication": "https://www.rdkit.org/docs/RDKit_Book.html",
+        "Source Code": "https://github.com/rdkit/rdkit",
+        "License": "BSD-3.0",
+        "Contributor": "miquelduranfrigola",
+        "S3": "https://ersilia-models-zipped.s3.eu-central-1.amazonaws.com/eos3b5e.zip",
+        "DockerHub": "https://hub.docker.com/r/ersiliaos/eos3b5e",
+        "Docker Architecture": [
+            "AMD64"
+        ]
+    },
+    "model_id": "eos3b5e",
+    "Slug": "molecular-weight",
+    "api_list": [
+        "run"
+    ]
+}
