@@ -15,7 +15,7 @@ jobs:
       - name: Run tests
         run: |
           pip install . 
-          pip install pytest
+          pip install pytest httpx
           pytest -vv
 
   upload_ersiliapack_to_dockerhub:
