@@ -1,5 +1,5 @@
 import os, sys
-os.environ["ENVIRONMENT"] = "prod"
+os.environ["ENVIRONMENT"] = "local"
 os.environ["RATE_LIMIT"] = "2/minute"
 os.environ["REDIS_URI"] = "redis://localhost:6379"
 
