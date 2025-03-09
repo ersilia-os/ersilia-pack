@@ -1,8 +1,6 @@
 import sys
 
-from typing import Any, Dict
-
-from fastapi import Depends, FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from slowapi.middleware import SlowAPIMiddleware
@@ -17,16 +15,16 @@ from .default import (
 from .exceptions.handlers import register_exception_handlers
 from .middleware.rcontext import RequestContextMiddleware
 from .routers import docs, metadata, run, health
-from .utils import get_metadata, create_limiter, init_redis
+from .utils import get_sync_metadata, create_limiter, init_redis
 
 sys.path.insert(0, ROOT)
 
 limiter = create_limiter()
 
-
+metadata_card = get_sync_metadata()["card"]
 app = FastAPI(
-  title="Ersilia Pack Model Server",
-  description=API_DESCIPTION,
+  title=f"{metadata_card['Identifier']}:{metadata_card['Slug']} Server",
+  description=f"{metadata_card['Title']}. {API_DESCIPTION}",
   docs_url=None,
   redoc_url=None,
 )
