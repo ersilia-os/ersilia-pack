@@ -9,11 +9,6 @@ os.environ["REDIS_URI"] = "redis://localhost:6379"
 
 sys.path.insert(0, "../../src/ersilia_pack")
 
-from fastapi.testclient import TestClient
-from src.ersilia_pack.templates.app import app
-
-client = TestClient(app)
-
 @pytest.fixture
 def create_information_file():
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -33,6 +28,12 @@ def create_information_file():
         os.remove(target_file_path)
 
 def test_rate_limiting(create_information_file):
+
+    from fastapi.testclient import TestClient
+    from src.ersilia_pack.templates.app import app
+
+    client = TestClient(app)
+
     resp_one = client.get("/card")
     assert resp_one.status_code == 200, f"Expected 200, got {resp_one.status_code}"
 
