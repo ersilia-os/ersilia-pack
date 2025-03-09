@@ -204,8 +204,9 @@ async def get_metadata():
 
 def get_sync_metadata():
   file_path = os.path.join(BUNDLE_FOLDER, "information.json")
-  contents = _read_file(file_path)
-  return json.loads(contents)
+  if os.path.exists(file_path):
+    contents = _read_file(file_path)
+    return json.loads(contents)
 
 
 def read_example():
