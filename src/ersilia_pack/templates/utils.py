@@ -123,8 +123,7 @@ def orient_to_json(values, columns, index, orient, output_type):
       record = collections.OrderedDict()
       for j in range(len(columns)):
         record[columns[j]] = values_serializer([values[i][j]])[0]
-      key = make_hashable(index[i])
-      data[key] = record
+      data[index[i]] = record
     return data
 
   elif orient == "columns":
@@ -177,7 +176,7 @@ def get_api_names_from_sh(framework_dir):
 def get_example_path(example_file):
   example_path = os.path.join(FRAMEWORK_FOLDER, "examples", example_file)
   api_name = get_api_names_from_sh(FRAMEWORK_FOLDER)
-  if api_name: 
+  if api_name:
     api_name = api_name[0]
     if not os.path.exists(example_path):
       example_path = os.path.join(
@@ -201,6 +200,12 @@ def _read_file(file_path: str) -> str:
 async def get_metadata():
   data = await load_card_metadata(BUNDLE_FOLDER)
   return data["card"]
+
+
+def get_sync_metadata():
+  file_path = os.path.join(BUNDLE_FOLDER, "information.json")
+  contents = _read_file(file_path)
+  return json.loads(contents)
 
 
 def read_example():
@@ -301,14 +306,19 @@ def get_cpu_count(logical):
 
 
 def run_in_parallel(num_workers, tag, chunks):
+  num_tasks = len(chunks)
+  chunksize = max(1, num_tasks // (num_workers * 4))
+
   with multiprocessing.Pool(processes=num_workers) as pool:
     chunk_args = [(chunk, idx, tag) for idx, chunk in enumerate(chunks)]
-    processed = pool.starmap_async(process_chunk, chunk_args, chunksize=1)
-    _results = processed.get()
-    results, headers = [], []
-    for result, header in _results:
-      results.extend(result)
-      headers.append(header)
+    async_result = pool.starmap_async(process_chunk, chunk_args, chunksize=chunksize)
+    results_headers = async_result.get()
+
+  results, headers = [], []
+  for result, header in results_headers:
+    results.extend(result)
+    headers.append(header)
+
   return results, headers[0]
 
 
