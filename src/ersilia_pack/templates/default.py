@@ -40,7 +40,7 @@ REDIS_EXPIRATION = int(
 )  # One week just as default expiration
 MAX_BATCH_SIZE = int(os.getenv("MAX_BATCH_SIZE", 2))
 MAX_WAIT_TIME = os.getenv("MAX_WAIT_TIME", 0.1)
-FAIL_MAX = os.getenv("FAIL_MAX", 6)
+FAIL_MAX = int(os.getenv("FAIL_MAX", 100))
 RESET_TIMEOUT = os.getenv("RESET_TIMEOUT", 60)
 RATE_LIMIT = os.getenv("RATE_LIMIT", "100/minute")
 RATE_LIMIT_LOCAL = os.getenv("RATE_LIMIT", "10000000/minute")

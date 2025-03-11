@@ -1,7 +1,7 @@
 import pybreaker, time
 from fastapi import HTTPException
 from pybreaker import CircuitMemoryStorage
-from ..default import ErrorMessages
+from ..default import ErrorMessages, FAIL_MAX, RESET_TIMEOUT
 
 
 class AppException(Exception):
@@ -13,8 +13,8 @@ class AppException(Exception):
 class ProcessingCircuitBreaker(pybreaker.CircuitBreaker):
   def __init__(self):
     super().__init__(
-      fail_max=5,
-      reset_timeout=30,
+      fail_max=FAIL_MAX,
+      reset_timeout=RESET_TIMEOUT,
       exclude=[HTTPException(status_code=400)],
       state_storage=CircuitMemoryStorage(pybreaker.STATE_CLOSED),
     )
