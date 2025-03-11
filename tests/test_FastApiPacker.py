@@ -142,8 +142,16 @@ class TestFastApiPacker:
     metadata_file = temp_model_directory / "metadata.json"
     metadata_file.write_text(json.dumps({"Identifier": "test_model_id"}))
 
+<<<<<<< HEAD
     install_file = temp_model_directory / "install.yml"
     install_file.write_text(yaml.dump({"python": "3.8", "pip": ["requests"]}))
+=======
+    # 3. Test _get_favicon
+    @patch("urllib.request.urlretrieve")
+    def test_get_favicon(self, mock_urlretrieve, temp_model_directory, bundles_repo_path):
+        metadata_file = temp_model_directory / "metadata.json"
+        metadata_file.write_text(json.dumps({"Identifier": "test_model_id", "Output Type": "Float"}))
+>>>>>>> b074cc1 (fix tests for output type)
 
     packer = FastApiAppPacker(str(temp_model_directory), str(bundles_repo_path))
     packer._get_favicon()
@@ -161,10 +169,18 @@ class TestFastApiPacker:
     metadata_file = temp_model_directory / "metadata.json"
     metadata_file.write_text(json.dumps({"Identifier": "test_model_id"}))
 
+<<<<<<< HEAD
     install_file = temp_model_directory / "install.yml"
     install_file.write_text(yaml.dump({"python": "3.8", "pip": ["requests"]}))
     packer = FastApiAppPacker(str(temp_model_directory), str(bundles_repo_path))
     packer._create_bundle_structure()
+=======
+    # 4. Test _create_bundle_structure
+    def test_create_bundle_structure(self, temp_model_directory, bundles_repo_path):
+        (temp_model_directory / "model" / "test_file.txt").write_text("content")
+        metadata_file = temp_model_directory / "metadata.json"
+        metadata_file.write_text(json.dumps({"Identifier": "test_model_id", "Output Type": "Float"}))
+>>>>>>> b074cc1 (fix tests for output type)
 
     assert os.path.exists(os.path.join(packer.bundle_dir, "model", "test_file.txt"))
 
@@ -180,14 +196,33 @@ class TestFastApiPacker:
       })
     )
 
+<<<<<<< HEAD
     install_file = temp_model_directory / "install.yml"
     install_file.write_text(yaml.dump({"python": "3.8", "pip": ["requests"]}))
+=======
+    # 5. Test _get_input_schema
+    @patch("shutil.copy")
+    def test_get_input_schema(self, mock_copy, temp_model_directory, bundles_repo_path):
+        metadata_file = temp_model_directory / "metadata.json"
+        metadata_file.write_text(json.dumps({
+            "Identifier": "test_model_id", 
+            "Input": ["Text"], 
+            "Input Shape": "Square",
+            "Output Type": "Float"
+        }))
+>>>>>>> b074cc1 (fix tests for output type)
 
     packer = FastApiAppPacker(str(temp_model_directory), str(bundles_repo_path))
     packer.info = {"card": {"Input": ["Text"], "Input Shape": "Square"}}
     packer._get_input_schema()
 
+<<<<<<< HEAD
     mock_copy.assert_called_once()
+=======
+        packer = FastApiAppPacker(str(temp_model_directory), str(bundles_repo_path))
+        packer.info = {"card": {"Input": ["Text"], "Input Shape": "Square", "Output Type": "Float"}}
+        packer._get_input_schema()
+>>>>>>> b074cc1 (fix tests for output type)
 
   # 6. Test _get_api_names_from_sh
   @patch("shutil.copy", wraps=shutil.copy)  # Use wraps to call the original function
@@ -200,16 +235,59 @@ class TestFastApiPacker:
     framework_dir.mkdir(parents=True, exist_ok=True)
     (framework_dir / "run.sh").write_text("#!/bin/bash\necho 'Running API...'")
 
+<<<<<<< HEAD
     # Add a metadata.json file
     metadata_file = temp_model_directory / "metadata.json"
     metadata_file.write_text(json.dumps({"Identifier": "test_model_id"}))
+=======
+    # 6. Test _get_api_names_from_sh
+    @patch("shutil.copy", wraps=shutil.copy)  # Use wraps to call the original function
+    def test_get_api_names_from_sh(self, mock_copy, temp_model_directory, bundles_repo_path):
+        # Ensure temp_model_directory is a Path object
+        temp_model_directory = Path(temp_model_directory)
+        
+        # Setup: Create the required directory structure
+        framework_dir = temp_model_directory / "model" / "framework"
+        framework_dir.mkdir(parents=True, exist_ok=True)
+        (framework_dir / "run.sh").write_text("#!/bin/bash\necho 'Running API...'")
+        
+        # Add a metadata.json file
+        metadata_file = temp_model_directory / "metadata.json"
+        metadata_file.write_text(json.dumps({"Identifier": "test_model_id", "Output Type": "Float"}))
+        
+        # Add an install.yml file
+        install_file = temp_model_directory / "install.yml"
+        install_file.write_text(yaml.dump({"python": "3.8", "pip": ["requests"]}))
+        
+        # Initialize FastApiAppPacker
+        packer = FastApiAppPacker(str(temp_model_directory), str(bundles_repo_path))
+        
+        # Simulate copying model files to bundle_dir
+        bundle_framework_dir = Path(packer.bundle_dir) / "model" / "framework"
+        bundle_framework_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Perform the copy without mocking to ensure the file is copied
+        shutil.copy(framework_dir / "run.sh", bundle_framework_dir / "run.sh")
+        
+        # Run the method to get API names
+        api_names = packer._get_api_names_from_sh()
+>>>>>>> b074cc1 (fix tests for output type)
 
     # Add an install.yml file
     install_file = temp_model_directory / "install.yml"
     install_file.write_text(yaml.dump({"python": "3.8", "pip": ["requests"]}))
 
+<<<<<<< HEAD
     # Initialize FastApiAppPacker
     packer = FastApiAppPacker(str(temp_model_directory), str(bundles_repo_path))
+=======
+    # 7. Test _create_app_files
+    @patch("shutil.copy")  # Mock shutil.copy
+    def test_create_app_files(self, mock_copy, temp_model_directory, bundles_repo_path):
+        # Create a metadata.json file
+        metadata_file = temp_model_directory / "metadata.json"
+        metadata_file.write_text(json.dumps({"Identifier": "test_model_id", "Output Type": "Float"}))
+>>>>>>> b074cc1 (fix tests for output type)
 
     # Simulate copying model files to bundle_dir
     bundle_framework_dir = Path(packer.bundle_dir) / "model" / "framework"
