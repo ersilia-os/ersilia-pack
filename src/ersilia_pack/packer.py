@@ -1,3 +1,6 @@
+import os
+import csv
+import shutil
 import argparse
 import datetime
 import json
@@ -74,17 +77,45 @@ class FastApiAppPacker(object):
     )
     logger.debug("Copying the favicon")
 
+  def _load_metadata_as_dict_from_file(self):
+        json_file = os.path.join(self.dest_dir, "metadata.json")
+        if os.path.exists(json_file):
+            with open(json_file, "r") as f:
+                data = json.load(f)
+                return data
+        yml_file = os.path.join(self.dest_dir, "metadata.yml")
+        if os.path.exists(yml_file):
+            data = MetadataYml2JsonConverter(yml_file).convert()
+            return data
+        raise Exception("No metadata file found")
+
   def _load_metadata(self):
-    json_file = os.path.join(self.dest_dir, "metadata.json")
-    if os.path.exists(json_file):
-      with open(json_file, "r") as f:
-        data = json.load(f)
+        data = self._load_metadata_as_dict_from_file()
+        if "Input Shape" not in data:
+            data["Input Shape"] = "Single"
+        if "Output Shape" not in data:
+            data["Output Shape"] = "List"
+        if "Output Type" not in data:
+            columns_file = os.path.join(self.dest_dir, "model", "framework", "columns", "run_columns.csv")
+            if not os.path.exists(columns_file):
+                raise Exception("No columns file found")
+            with open(columns_file, "r") as f:
+                reader = csv.reader(f)
+                h = next(reader)
+                idx = h.index("type")
+                all_values = [r[idx] for r in reader]
+                all_values = sorted(set(all_values))
+                if all_values == ["integer"]:
+                    data["Output Type"] = ["Integer"]
+                elif all_values == ["float"]:
+                    data["Output Type"] = ["Float"]
+                elif all_values == ["string"]:
+                    data["Output Type"] = ["String"]
+                elif all_values == ["integer", "float"]:
+                    data["Output Type"] = ["Float"]
+                else:
+                    raise Exception("Unknown output type")
         return data
-    yml_file = os.path.join(self.dest_dir, "metadata.yml")
-    if os.path.exists(yml_file):
-      data = MetadataYml2JsonConverter(yml_file).convert()
-      return data
-    raise Exception("No metadata file found")
 
   def _get_info(self):
     logger.debug("Getting info from metadata")
