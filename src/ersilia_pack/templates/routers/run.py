@@ -1,6 +1,5 @@
 import uuid, sys, psutil
 from fastapi import APIRouter, Body, Depends, Query, Request, status
-from typing import Optional
 from ..input_schemas.compound.single import InputSchema, exemplary_input
 from ..utils import (
   get_metadata,
@@ -9,6 +8,7 @@ from ..utils import (
   get_cached_or_compute,
   create_limiter,
   rate_limit,
+  extract_input
 )
 from ..exceptions.errors import breaker
 from ..default import OrientEnum, ErrorMessages
@@ -84,6 +84,7 @@ def run(
   if not requests:
     raise AppException(status.HTTP_400_BAD_REQUEST, ErrorMessages.EMPTY_REQUEST)
   data = requests.model_dump()
+  data = extract_input(data)
 
   if not data:
     raise AppException(status.HTTP_422_UNPROCESSABLE_ENTITY, ErrorMessages.EMPTY_DATA)

@@ -22,7 +22,7 @@ LOADED_AT_STARTUP = os.environ.get("LOADED_AT_STARTUP", "False").lower() in (
 REDOC_JS_URL = "https://unpkg.com/redoc@next/bundles/redoc.standalone.js"
 MATE_CSS_URL = "https://cdn.jsdelivr.net/gh/ajatkj/swagger-ui-improved-theme/css/swagger-ui-improved.css"
 API_DESCIPTION = """
-This server offers endpoints for seamless model deployment and monitoring. It provides `/metrics` for Prometheus-based performance insights, `/metadata`\n for detailed model information, and `/info` to quickly retrieve the prediction endpoint name. The core `/run` endpoint offers sub-routes for example inputs/outputs, input/output column details, and a POST method that handles\n predictions with dynamic resource planning and multiprocessing. Additionally, the `/health` endpoint delivers system status and circuit breaker information—which trips after five consecutive failures with a 30-second reset—while enforcing a rate-\nlimit of 100 requests per minute.
+This server provides `/metrics` for Prometheus-based performance insights, `/metadata` for detailed model information, and `/info` to quickly retrieve the prediction endpoint name. The core `/run` endpoint offers sub-routes\n for example inputs/outputs, input/output column details, and a POST method that handles predictions with dynamic resource planning and multiprocessing. Additionally, the `/health` endpoint delivers system status and circuit breaker information\n which trips after five consecutive failures with a 30-second reset—while enforcing a rate-limit of 100 requests per minute.
 """
 FRAMEWORK_FOLDER = os.path.abspath(os.path.join(ROOT, "..", "model", "framework"))
 MODEL_ROOT = os.path.abspath(os.path.join(ROOT, "..", "model"))
