@@ -442,6 +442,7 @@ def get_cached_or_compute(model_id, data, tag, max_workers, min_workers, metadat
 
   if missing_inputs:
     inputs = extract_input(missing_inputs)
+
     computed_results, computed_headers = compute_results(
       inputs, tag, max_workers, min_workers
     )
