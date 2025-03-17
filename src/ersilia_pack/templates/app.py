@@ -2,6 +2,7 @@ import sys
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import ORJSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from slowapi.middleware import SlowAPIMiddleware
 
@@ -27,6 +28,7 @@ app = FastAPI(
   description=f"{metadata_card['Title']}. {API_DESCIPTION}",
   docs_url=None,
   redoc_url=None,
+  default_response_class=ORJSONResponse
 )
 
 instrumentator = Instrumentator(
