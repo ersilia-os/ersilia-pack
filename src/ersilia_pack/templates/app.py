@@ -2,7 +2,7 @@ import sys
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import ORJSONResponse
+from fastapi.middleware.gzip import GZipMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from slowapi.middleware import SlowAPIMiddleware
 
@@ -28,8 +28,8 @@ app = FastAPI(
   description=f"{metadata_card['Title']}. {API_DESCIPTION}",
   docs_url=None,
   redoc_url=None,
-  default_response_class=ORJSONResponse
 )
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 instrumentator = Instrumentator(
   should_group_status_codes=True,

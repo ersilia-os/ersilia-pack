@@ -16,8 +16,7 @@ dependencies = [
     "prometheus-fastapi-instrumentator",
     "pybreaker",
     "redis",
-    "psutil",
-    "orjson"
+    "psutil"
 ]
 
 [tool.setuptools.packages.find]
