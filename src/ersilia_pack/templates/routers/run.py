@@ -1,5 +1,6 @@
-import uuid, sys, psutil
+import uuid, sys, psutil, json
 from fastapi import APIRouter, Body, Depends, Query, Request, status
+from fastapi.responses import StreamingResponse
 from ..input_schemas.compound.single import InputSchema, exemplary_input
 from ..utils import (
   get_metadata,
@@ -63,42 +64,53 @@ async def columns_output(request: Request):
   header = load_csv_data(generic_example_output_file)[0]
   return header
 
+def stream_response(data, chunk_size=1024):
+    """
+    Convert the final result into a JSON string and yield it in chunks.
+    """
+    json_str = json.dumps(data)
+    for i in range(0, len(json_str), chunk_size):
+        yield json_str[i:i + chunk_size]
+
 
 @router.post("/run", tags=["Run"])
 @breaker
 @limiter.limit(rate_limit())
 def run(
-  request: Request,
-  requests: InputSchema = Body(..., example=exemplary_input),
-  orient: OrientEnum = Query(OrientEnum.RECORDS),
-  min_workers: int = Query(1, ge=1),
-  max_workers: int = Query(1, ge=1),
-  metadata: dict = Depends(get_metadata),
+    request: Request,
+    requests: InputSchema = Body(..., example=exemplary_input),
+    orient: str = Query("RECORDS"),  # assuming OrientEnum.RECORDS is the default string
+    min_workers: int = Query(1, ge=1),
+    max_workers: int = Query(1, ge=1),
+    metadata: dict = Depends(get_metadata),
 ):
-  if (
-    psutil.cpu_percent() > MAX_CPU_PERC
-    or psutil.virtual_memory().percent > MAX_MEM_PERC
-  ):
-    raise AppException(status.HTTP_503_SERVICE_UNAVAILABLE, ErrorMessages.RESOURCE)
+    import time
+    # Check system resource availability
+    if psutil.cpu_percent() > MAX_CPU_PERC or psutil.virtual_memory().percent > MAX_MEM_PERC:
+        raise AppException(status.HTTP_503_SERVICE_UNAVAILABLE, ErrorMessages.RESOURCE)
 
-  if not requests:
-    raise AppException(status.HTTP_400_BAD_REQUEST, ErrorMessages.EMPTY_REQUEST)
-  data = requests.model_dump()
-  data = extract_input(data)
-  import time
+    if not requests:
+        raise AppException(status.HTTP_400_BAD_REQUEST, ErrorMessages.EMPTY_REQUEST)
 
-  if not data:
-    raise AppException(status.HTTP_422_UNPROCESSABLE_ENTITY, ErrorMessages.EMPTY_DATA)
-  tag = str(uuid.uuid4())
-  st = time.perf_counter()
+    data = requests.model_dump()
+    data = extract_input(data)
 
-  results, header = get_cached_or_compute(
-    metadata["Identifier"], data, tag, max_workers, min_workers, metadata
-  )
-  et = time.perf_counter()
-  print(f"Compute time: {et - st:.5f}")
-  st = time.perf_counter()
-  results = orient_to_json(results, header, data, orient, metadata["Output Type"])
-  et = time.perf_counter()
-  print(f"value conversion time: {et - st:.5f}")
-  return results
+    if not data:
+        raise AppException(status.HTTP_422_UNPROCESSABLE_ENTITY, ErrorMessages.EMPTY_DATA)
+
+    tag = str(uuid.uuid4())
+    st = time.perf_counter()
+
+    results, header = get_cached_or_compute(
+        metadata["Identifier"], data, tag, max_workers, min_workers, metadata
+    )
+    et = time.perf_counter()
+    print(f"Compute time: {et - st:.5f}")
+    
+    st = time.perf_counter()
+    results = orient_to_json(results, header, data, orient, metadata["Output Type"])
+    et = time.perf_counter()
+    print(f"Value conversion time: {et - st:.5f}")
+    
+    # Return the response as a streaming response in JSON format.
+    return StreamingResponse(stream_response(results), media_type="application/json")

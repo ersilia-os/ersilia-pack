@@ -2,7 +2,6 @@ import sys
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator, metrics
 from slowapi.middleware import SlowAPIMiddleware
 
@@ -29,7 +28,6 @@ app = FastAPI(
   docs_url=None,
   redoc_url=None,
 )
-app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 instrumentator = Instrumentator(
   should_group_status_codes=True,
