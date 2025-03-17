@@ -366,8 +366,6 @@ def generate_redis_key(raw_string):
 
 
 def fetch_cached_results(model_id, data):
-  st = time.perf_counter()
-
   if "input" in data:
     result_keys = [generate_redis_key(f"{model_id}:{item['input']}") for item in data]
   else:
@@ -382,13 +380,10 @@ def fetch_cached_results(model_id, data):
       results.append(json.loads(cached))
     else:
       missing_inputs.append(item)
-  et = time.perf_counter()
-  print(f"caching retrieval time: {et - st:.5f}")
   return results, missing_inputs
 
 
 def cache_missing_results(model_id, missing_inputs, computed_results):
-  st = time.perf_counter()
   for item, result in zip(missing_inputs, computed_results):
     if "input" in item:
       result_key = f"{model_id}:{item['input']}"
@@ -396,8 +391,6 @@ def cache_missing_results(model_id, missing_inputs, computed_results):
       result_key = f"{model_id}:{item}"
       result_key = generate_redis_key(result_key)
       redis_client.setex(result_key, REDIS_EXPIRATION, json.dumps(result))
-  et = time.perf_counter()
-  print(f"caching time: {et - st:.5f}")
 
 
 def fetch_or_cache_header(model_id, computed_headers=None):
@@ -430,12 +423,9 @@ def get_cached_or_compute(model_id, data, tag, max_workers, min_workers, metadat
 
   if missing_inputs:
     inputs = extract_input(missing_inputs)
-    st = time.perf_counter()
     computed_results, computed_headers = compute_results(
       inputs, tag, max_workers, min_workers
     )
-    et = time.perf_counter()
-    print(f"compute time: {et - st:.5f}")
     cache_missing_results(model_id, missing_inputs, computed_results)
     results.extend(computed_results)
   header = fetch_or_cache_header(model_id, computed_headers)
