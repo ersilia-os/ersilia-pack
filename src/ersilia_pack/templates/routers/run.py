@@ -8,7 +8,7 @@ from ..utils import (
   get_cached_or_compute,
   create_limiter,
   rate_limit,
-  extract_input
+  extract_input,
 )
 from ..exceptions.errors import breaker
 from ..default import OrientEnum, ErrorMessages
@@ -85,12 +85,20 @@ def run(
     raise AppException(status.HTTP_400_BAD_REQUEST, ErrorMessages.EMPTY_REQUEST)
   data = requests.model_dump()
   data = extract_input(data)
+  import time
 
   if not data:
     raise AppException(status.HTTP_422_UNPROCESSABLE_ENTITY, ErrorMessages.EMPTY_DATA)
   tag = str(uuid.uuid4())
+  st = time.perf_counter()
+
   results, header = get_cached_or_compute(
     metadata["Identifier"], data, tag, max_workers, min_workers, metadata
   )
+  et = time.perf_counter()
+  print(f"Compute time: {et - st:.5f}")
+  st = time.perf_counter()
   results = orient_to_json(results, header, data, orient, metadata["Output Type"])
+  et = time.perf_counter()
+  print(f"value conversion time: {et - st:.5f}")
   return results

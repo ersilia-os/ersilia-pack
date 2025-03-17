@@ -2,7 +2,7 @@ import asyncio, collections, csv, os, subprocess, psutil, multiprocessing, json,
 from redis import Redis, ConnectionError
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-
+import time
 from .default import (
   ENVIRONMENT,
   DEFAULT_REDIS_URI,
@@ -69,75 +69,57 @@ def orient_to_json(values, columns, index, orient, output_type):
   else:
     output_type = output_type[0].lower()
 
-  def values_serializer(values):
+  def convert_value(x):
     if output_type == "string":
-      return [str(x) for x in values]
-
+      return str(x)
     elif output_type == "float":
-      _values = []
-      for x in values:
-        if isinstance(x, str):
-          _values.append(float(x) if x != "" else None)
-        elif isinstance(x, (int, float)):
-          _values.append(float(x))
-        elif isinstance(x, list) and x:
-          _values.append(float(x[0]))
-        else:
-          _values.append(None)
-      return _values
-
+      if isinstance(x, str):
+        return float(x) if x != "" else None
+      elif isinstance(x, (int, float)):
+        return float(x)
+      elif isinstance(x, list) and x:
+        return float(x[0])
+      else:
+        return None
     elif output_type == "integer":
-      _values = []
-      for x in values:
-        if isinstance(x, str):
-          _values.append(int(x) if x != "" else None)
-        elif isinstance(x, (int, float)):
-          _values.append(int(x))
-        elif isinstance(x, list) and x:
-          _values.append(int(x[0]))
-        else:
-          _values.append(None)
-      return _values
+      if isinstance(x, str):
+        return int(x) if x != "" else None
+      elif isinstance(x, (int, float)):
+        return int(x)
+      elif isinstance(x, list) and x:
+        return int(x[0])
+      else:
+        return None
+    return x
 
-    return values
+  if values and isinstance(values[0], list):
+    serialized = [[convert_value(x) for x in row] for row in values]
+  else:
+    serialized = [convert_value(x) for x in values]
 
   if orient == "split":
-    data = collections.OrderedDict()
-    data["columns"] = columns
-    data["index"] = index
-    data["data"] = values_serializer(values)
-    return data
+    return {"columns": columns, "index": index, "data": serialized}
 
-  if orient == "records":
-    data = []
-    for i in range(len(values)):
-      record = collections.OrderedDict()
-      for j in range(len(columns)):
-        record[columns[j]] = values_serializer([values[i][j]])[0]
-      data.append(record)
-    return data
+  elif orient == "records":
+    _zip = zip
+    _dict = dict
+    _cols = columns
+    return [_dict(_zip(_cols, row)) for row in serialized]
 
-  if orient == "index":
-    data = collections.OrderedDict()
-    for i in range(len(index)):
-      record = collections.OrderedDict()
-      for j in range(len(columns)):
-        record[columns[j]] = values_serializer([values[i][j]])[0]
-      data[index[i]] = record
-    return data
+  elif orient == "index":
+    return {idx: dict(zip(columns, row)) for idx, row in zip(index, serialized)}
 
   elif orient == "columns":
-    data = collections.OrderedDict()
-    for j in range(len(columns)):
-      records = collections.OrderedDict()
-      for i in range(len(index)):
-        key = make_hashable(index[i])
-        records[key] = values_serializer([values[i][j]])[0]
-      data[columns[j]] = records
+    data = {}
+    for j, col in enumerate(columns):
+      col_data = {}
+      for i, idx in enumerate(index):
+        col_data[make_hashable(idx)] = serialized[i][j]
+      data[col] = col_data
     return data
 
   elif orient == "values":
-    return values_serializer(values)
+    return serialized
 
   return None
 
@@ -384,6 +366,8 @@ def generate_redis_key(raw_string):
 
 
 def fetch_cached_results(model_id, data):
+  st = time.perf_counter()
+
   if "input" in data:
     result_keys = [generate_redis_key(f"{model_id}:{item['input']}") for item in data]
   else:
@@ -398,11 +382,13 @@ def fetch_cached_results(model_id, data):
       results.append(json.loads(cached))
     else:
       missing_inputs.append(item)
-
+  et = time.perf_counter()
+  print(f"caching retrieval time: {et - st:.5f}")
   return results, missing_inputs
 
 
 def cache_missing_results(model_id, missing_inputs, computed_results):
+  st = time.perf_counter()
   for item, result in zip(missing_inputs, computed_results):
     if "input" in item:
       result_key = f"{model_id}:{item['input']}"
@@ -410,6 +396,8 @@ def cache_missing_results(model_id, missing_inputs, computed_results):
       result_key = f"{model_id}:{item}"
       result_key = generate_redis_key(result_key)
       redis_client.setex(result_key, REDIS_EXPIRATION, json.dumps(result))
+  et = time.perf_counter()
+  print(f"caching time: {et - st:.5f}")
 
 
 def fetch_or_cache_header(model_id, computed_headers=None):
@@ -442,10 +430,12 @@ def get_cached_or_compute(model_id, data, tag, max_workers, min_workers, metadat
 
   if missing_inputs:
     inputs = extract_input(missing_inputs)
-
+    st = time.perf_counter()
     computed_results, computed_headers = compute_results(
       inputs, tag, max_workers, min_workers
     )
+    et = time.perf_counter()
+    print(f"compute time: {et - st:.5f}")
     cache_missing_results(model_id, missing_inputs, computed_results)
     results.extend(computed_results)
   header = fetch_or_cache_header(model_id, computed_headers)
