@@ -1,5 +1,6 @@
 import uuid, sys, psutil
 from fastapi import APIRouter, Body, Depends, Query, Request, status
+from fastapi.responses import ORJSONResponse
 from ..input_schemas.compound.single import InputSchema, exemplary_input
 from ..utils import (
   get_metadata,
@@ -101,4 +102,4 @@ def run(
   results = orient_to_json(results, header, data, orient, metadata["Output Type"])
   et = time.perf_counter()
   print(f"value conversion time: {et - st:.5f}")
-  return results
+  return ORJSONResponse(content=results)
