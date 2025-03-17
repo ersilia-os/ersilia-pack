@@ -1,5 +1,6 @@
 import uuid, sys, psutil
 from fastapi import APIRouter, Body, Depends, Query, Request, status
+from fastapi.responses import ORJSONResponse
 from ..input_schemas.compound.single import InputSchema, exemplary_input
 from ..utils import (
   get_metadata,
@@ -8,7 +9,7 @@ from ..utils import (
   get_cached_or_compute,
   create_limiter,
   rate_limit,
-  extract_input
+  extract_input,
 )
 from ..exceptions.errors import breaker
 from ..default import OrientEnum, ErrorMessages
@@ -63,7 +64,6 @@ async def columns_output(request: Request):
   header = load_csv_data(generic_example_output_file)[0]
   return header
 
-
 @router.post("/run", tags=["Run"])
 @breaker
 @limiter.limit(rate_limit())
@@ -93,4 +93,4 @@ def run(
     metadata["Identifier"], data, tag, max_workers, min_workers, metadata
   )
   results = orient_to_json(results, header, data, orient, metadata["Output Type"])
-  return results
+  return ORJSONResponse(results)
