@@ -192,6 +192,7 @@ class FastApiAppPacker(object):
       ("middleware/__init__.py", os.path.join(app_dir, "middleware", "__init__.py")),
       ("routers/metadata.py", os.path.join(app_dir, "routers", "metadata.py")),
       ("routers/run.py", os.path.join(app_dir, "routers", "run.py")),
+      ("routers/job.py", os.path.join(app_dir, "routers", "job.py")),
       ("routers/docs.py", os.path.join(app_dir, "routers", "docs.py")),
       ("routers/health.py", os.path.join(app_dir, "routers", "health.py")),
     ]

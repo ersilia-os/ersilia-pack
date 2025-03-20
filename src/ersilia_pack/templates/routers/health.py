@@ -7,7 +7,7 @@ from ..exceptions.errors import breaker
 router = APIRouter()
 
 
-@router.get("/health", tags=["Monitoring"])
+@router.get("/healthz", tags=["Monitoring"])
 def health_check():
   status = {
     "breaker": {
