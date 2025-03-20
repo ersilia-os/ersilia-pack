@@ -14,7 +14,7 @@ from .default import (
 )
 from .exceptions.handlers import register_exception_handlers
 from .middleware.rcontext import RequestContextMiddleware
-from .routers import docs, metadata, run, health
+from .routers import docs, metadata, run, health, job
 from .utils import get_sync_metadata, create_limiter, init_redis
 
 sys.path.insert(0, ROOT)
@@ -74,5 +74,6 @@ app.add_middleware(RequestContextMiddleware)
 
 app.include_router(metadata.router)
 app.include_router(run.router)
+app.include_router(job.router)
 app.include_router(docs.router)
 app.include_router(health.router)

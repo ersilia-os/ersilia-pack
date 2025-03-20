@@ -64,6 +64,7 @@ def make_hashable(obj):
 
 
 def orient_to_json(values, columns, index, orient, output_type):
+  print(f"Output type: {output_type}")
   if len(output_type) > 1:
     output_type = "string"
   else:
