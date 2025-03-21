@@ -64,12 +64,22 @@ class InstallParser:
           cmd += f" {part}"
       return cmd
 
+  def _has_version(self, cmd):
+    return any(re.fullmatch(r"\d+(\.\d+)*", item) for item in cmd)
+
   def _convert_conda_entry_to_bash(self, command):
     assert len(command) <= 4, "conda command must have 4 arguments"
-    if command[3] == "default":
-      cmd = f"conda install {command[1]}={command[2]}"
+    if "default" in command:
+      if self._has_version(command):
+        cmd = f"conda install {command[1]}={command[2]}"
+      else:
+        cmd = f"conda install {command[1]}"
     else:
-      cmd = f"conda install -c {command[3]} {command[1]}={command[2]}"
+      if self._has_version(command):
+        cmd = f"conda install -c {command[-1]} {command[1]}={command[2]}"
+
+      else:
+        cmd = f"conda install -c {command[-1]} {command[1]}"
     return cmd
 
   def _convert_commands_to_bash_script(self):

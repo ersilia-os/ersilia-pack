@@ -290,20 +290,22 @@ def get_cpu_count(logical):
 
 
 def run_in_parallel(num_workers, tag, chunks):
-  num_tasks = len(chunks)
-  chunksize = max(1, num_tasks // (num_workers * 4))
+    num_tasks = len(chunks)
+    chunksize = max(1, num_tasks // (num_workers * 2))
+    print(f"Chunk size: {chunksize} | number worker: {num_workers}")
 
-  with multiprocessing.Pool(processes=num_workers) as pool:
-    chunk_args = [(chunk, idx, tag) for idx, chunk in enumerate(chunks)]
-    async_result = pool.starmap_async(process_chunk, chunk_args, chunksize=chunksize)
-    results_headers = async_result.get()
+    with multiprocessing.Pool(processes=num_workers) as pool:
+        chunk_args = [(chunk, idx, tag) for idx, chunk in enumerate(chunks)]
+        async_result = pool.starmap_async(process_chunk, chunk_args, chunksize=chunksize)
+        results_headers = async_result.get()
 
-  results, headers = [], []
-  for result, header in results_headers:
-    results.extend(result)
-    headers.append(header)
+    results, headers = [], []
+    for result, header in results_headers:
+        results.extend(result)
+        headers.append(header)
 
-  return results, headers[0]
+    return results, headers[0]
+
 
 
 def compute_parallel(data, tag, max_workers, min_workers):
@@ -316,23 +318,30 @@ def compute_parallel(data, tag, max_workers, min_workers):
 def run_sequential_data(tag, data):
   return process_chunk(data, 0, tag)
 
+def is_model_variable(metadata):
+  if OUTPUT_CONSISTENCY in metadata:
+    if metadata[OUTPUT_CONSISTENCY] == "Variable":
+      return True
+  if "Generative" in metadata["Task"]:
+    return True
+  return False
 
-def is_parallel_amenable(data):
+def is_parallel_amenable(data, metadata):
   model_size_thres = compute_max_model_size_threshold()
+  if is_model_variable(metadata):
+    return True
   if model_size_byte > model_size_thres and len(data) >= int(DATA_SIZE_LOWERBOUND):
     return True
   elif model_size_byte < model_size_thres and len(data) >= int(DATA_SIZE_UPPERBOUND):
     return True
   return False
 
-
-def compute_results(data, tag, max_workers, min_workers):
-  parallel_amenable = is_parallel_amenable(data)
+def compute_results(data, tag, max_workers, min_workers, metadata):
+  parallel_amenable = is_parallel_amenable(data, metadata)
   if parallel_amenable:
     return compute_parallel(data, tag, max_workers, min_workers)
   else:
     return run_sequential_data(tag, data)
-
 
 def process_chunk(chunk, chunk_idx, base_tag):
   tag = f"{base_tag}_{chunk_idx}"
@@ -410,14 +419,13 @@ def fetch_or_cache_header(model_id, computed_headers=None):
 
 
 def get_cached_or_compute(model_id, data, tag, max_workers, min_workers, metadata):
-  if OUTPUT_CONSISTENCY in metadata:
-    if metadata[OUTPUT_CONSISTENCY] == "Variable":
-      inputs = extract_input(data)
-      return compute_results(inputs, tag, max_workers, min_workers)
+  if is_model_variable(metadata):
+    inputs = extract_input(data)
+    return compute_results(inputs, tag, max_workers, min_workers, metadata)
 
   if not init_redis():
     inputs = extract_input(data)
-    return compute_results(inputs, tag, max_workers, min_workers)
+    return compute_results(inputs, tag, max_workers, min_workers, metadata)
 
   results, missing_inputs = fetch_cached_results(model_id, data)
   computed_headers = None
@@ -425,7 +433,7 @@ def get_cached_or_compute(model_id, data, tag, max_workers, min_workers, metadat
   if missing_inputs:
     inputs = extract_input(missing_inputs)
     computed_results, computed_headers = compute_results(
-      inputs, tag, max_workers, min_workers
+      inputs, tag, max_workers, min_workers, metadata
     )
     cache_missing_results(model_id, missing_inputs, computed_results)
     results.extend(computed_results)
