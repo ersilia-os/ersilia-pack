@@ -64,6 +64,7 @@ async def columns_output(request: Request):
   header = load_csv_data(generic_example_output_file)[0]
   return header
 
+
 @router.post("/run", tags=["Run"])
 @breaker
 @limiter.limit(rate_limit())
@@ -72,7 +73,7 @@ def run(
   requests: InputSchema = Body(..., example=exemplary_input),
   orient: OrientEnum = Query(OrientEnum.RECORDS),
   min_workers: int = Query(1, ge=1),
-  max_workers: int = Query(1, ge=1),
+  max_workers: int = Query(12, ge=1),
   metadata: dict = Depends(get_metadata),
 ):
   if (
@@ -89,8 +90,12 @@ def run(
   if not data:
     raise AppException(status.HTTP_422_UNPROCESSABLE_ENTITY, ErrorMessages.EMPTY_DATA)
   tag = str(uuid.uuid4())
+  import time
+  st = time.perf_counter()
   results, header = get_cached_or_compute(
     metadata["Identifier"], data, tag, max_workers, min_workers, metadata
   )
+  et = time.perf_counter()
+  print(f"Execution Time: {et-st:.6f}")
   results = orient_to_json(results, header, data, orient, metadata["Output Type"])
   return ORJSONResponse(results)
