@@ -113,7 +113,7 @@ class FastApiAppPacker(object):
           data["Output Type"] = ["Float"]
         elif all_values == ["string"]:
           data["Output Type"] = ["String"]
-        elif all_values == ["integer", "float"]:
+        elif all_values == ["float", "integer"]:
           data["Output Type"] = ["Float"]
         else:
           raise Exception("Unknown output type")
