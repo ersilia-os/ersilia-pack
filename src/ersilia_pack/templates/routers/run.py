@@ -76,12 +76,6 @@ def run(
   max_workers: int = Query(12, ge=1),
   metadata: dict = Depends(get_metadata),
 ):
-  if (
-    psutil.cpu_percent() > MAX_CPU_PERC
-    or psutil.virtual_memory().percent > MAX_MEM_PERC
-  ):
-    raise AppException(status.HTTP_503_SERVICE_UNAVAILABLE, ErrorMessages.RESOURCE)
-
   if not requests:
     raise AppException(status.HTTP_400_BAD_REQUEST, ErrorMessages.EMPTY_REQUEST)
   data = requests.model_dump()
