@@ -30,7 +30,7 @@ class MetadataYml2JsonConverter:
       data["Status"] = self._tostr(self.data["Status"])
     data["Title"] = self._tostr(self.data["Title"])
     data["Description"] = self._tostr(self.data["Description"])
-    data["Mode"] = self._tostr(self.data["Mode"])
+    data["Mode"] = self._tostr(self.data.get("Mode", None))
     data["Input"] = self._tolist(self.data["Input"])
     data["Input Shape"] = self._tostr(self.data["Input Shape"])
     data["Task"] = self._tolist(self.data["Task"])
