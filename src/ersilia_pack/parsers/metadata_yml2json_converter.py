@@ -30,18 +30,21 @@ class MetadataYml2JsonConverter:
       data["Status"] = self._tostr(self.data["Status"])
     data["Title"] = self._tostr(self.data["Title"])
     data["Description"] = self._tostr(self.data["Description"])
-    data["Mode"] = self._tostr(self.data.get("Mode", None))
     data["Input"] = self._tolist(self.data["Input"])
     data["Input Shape"] = self._tostr(self.data["Input Shape"])
     data["Task"] = self._tolist(self.data["Task"])
     data["Output"] = self._tolist(self.data["Output"])
-    data["Output Type"] = self._tolist(self.data.get("Output Type", None))
-    data["Output Shape"] = self._tostr(self.data.get("Output Shape", None))
     data["Interpretation"] = self._tostr(self.data["Interpretation"])
     data["Tag"] = self._tolist(self.data["Tag"])
     data["Publication"] = self._tostr(self.data["Publication"])
     data["Source Code"] = self._tostr(self.data["Source Code"])
     data["License"] = self._tostr(self.data["License"])
+    if "Mode" in self.data:
+      data["Mode"] = self._tostr(self.data["Mode"])
+    if "Output Type" in self.data:
+      data["Output Type"] = self._tolist(self.data.get("Output Type"))
+    if "Output Shape" in self.data:
+      data["Output Shape"] = self._tostr(self.data.get("Output Shape"))
     if "Contributor" in self.data:
       data["Contributor"] = self._tostr(self.data["Contributor"])
     if "S3" in self.data:
