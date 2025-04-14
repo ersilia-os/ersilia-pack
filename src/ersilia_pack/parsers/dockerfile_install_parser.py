@@ -89,13 +89,14 @@ class DockerfileInstallParser(InstallParser):
         return ["conda", package, "default"]
 
     # Handle the case where a channel is given
-    package_info = re.split(r"==|=", parts[4])
-    if len(package_info) == 2:
-      package, version = package_info
-      return [parts[0], package, version, parts[3]]
-    else:
-      package = package_info[0]
-      return [parts[0], package, parts[3]]
+    if len(parts) == 5:
+      package_info = re.split(r"==|=", parts[4])
+      if len(package_info) == 2:
+        package, version = package_info
+        return [parts[0], package, version, parts[3]]
+      else:
+        package = package_info[0]
+        return [parts[0], package, parts[3]]
 
   def _get_commands(self):
     """
