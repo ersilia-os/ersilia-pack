@@ -1,4 +1,4 @@
-import uuid, sys, psutil
+import uuid, sys
 from fastapi import APIRouter, Body, Depends, Query, Request, status
 from fastapi.responses import ORJSONResponse
 from ..input_schemas.compound.single import InputSchema, exemplary_input

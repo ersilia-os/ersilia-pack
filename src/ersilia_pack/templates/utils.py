@@ -169,11 +169,18 @@ def get_example_path(example_file):
   return example_path
 
 
-async def load_card_metadata(bundle_folder: str):
-  file_path = os.path.join(bundle_folder, "information.json")
-  contents = await asyncio.to_thread(_read_file, file_path)
-  return json.loads(contents)
+try:
+    to_thread = asyncio.to_thread
+except AttributeError:
+    async def to_thread(func, *args, **kwargs):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, func, *args, **kwargs)
 
+
+async def load_card_metadata(bundle_folder: str):
+    file_path = os.path.join(bundle_folder, "information.json")
+    contents = await to_thread(_read_file, file_path)
+    return json.loads(contents)
 
 def _read_file(file_path: str) -> str:
   with open(file_path, "r") as f:
