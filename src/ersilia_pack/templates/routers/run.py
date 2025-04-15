@@ -17,8 +17,6 @@ from ..default import (
   ROOT,
   generic_example_input_file,
   generic_example_output_file,
-  MAX_CPU_PERC,
-  MAX_MEM_PERC,
 )
 from ..exceptions.errors import AppException
 

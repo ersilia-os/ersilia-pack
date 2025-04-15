@@ -338,6 +338,7 @@ def is_parallel_amenable(data, metadata):
 
 def compute_results(data, tag, max_workers, min_workers, metadata):
   parallel_amenable = is_parallel_amenable(data, metadata)
+  print(f"Amenable for multiprocessing: {parallel_amenable}")
   if parallel_amenable:
     return compute_parallel(data, tag, max_workers, min_workers)
   else:
