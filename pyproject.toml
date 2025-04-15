@@ -13,7 +13,6 @@ dependencies = [
     "PyYAML",
     "uvicorn[standard]",
     "slowapi",
-    "prometheus-fastapi-instrumentator",
     "pybreaker",
     "redis",
     "psutil",
