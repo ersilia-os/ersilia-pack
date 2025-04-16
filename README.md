@@ -1,7 +1,3 @@
-Below is an updated professional README with the requested changes:
-
----
-
 <p align="center">
   <img src="assets/logo.png" alt="Ersilia-Pack Logo" width="200"/>
 </p>
