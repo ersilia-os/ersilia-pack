@@ -178,8 +178,4 @@ For more details, please refer to the [Pandas to_json documentation](https://pan
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
-
----
-
-This README offers a comprehensive yet concise overview of Ersilia-Pack, its installation and usage instructions, and the structure of its API endpoints. Both end users and developers can quickly find the information they need to work with or contribute to the project.
+This project is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html).  
