@@ -154,9 +154,6 @@ For more details, please refer to the [Pandas to_json documentation](https://pan
 - **Comprehensive Run Endpoints:**  
   Facilitates example data retrieval for both input and output, along with dynamic job execution, enabling easy testing and validation of model predictions.
 
-- **Modular and Extensible Design:**  
-  Structured to separate metadata access and job processing logic, making it straightforward to extend and integrate additional functionalities as needed.
-
 - **Multiple Output Formats:**  
   Supports various output orientations (records, split, columns, index, and values) based on the Pandas DataFrame `to_json` syntax, allowing flexible JSON responses.
 
