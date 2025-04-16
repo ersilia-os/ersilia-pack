@@ -115,8 +115,7 @@ The Ersilia-Pack API is structured into two main categories: **Metadata** and **
   - **Input Columns (`/run/columns/input`):** Lists the input data headers.  
   - **Output Columns (`/run/columns/output`):** Lists the output data headers.
 
-- **Execute Job (`/run`):**  
-  Supports synchronous execution by processing the input data and returning computed results directly.
+- **Execute Job (`/run`):** Supports synchronous execution by processing the input data and returning computed results directly.
 
 #### Model Information
 
