@@ -73,9 +73,9 @@ ersilia_model_serve --bundle_path $BUNDLE_PATH --port $PORT
 |                        | ReDoc                         | `/redoc`                     | Alternative documentation view with a comprehensive layout.                                               |
 |                        | Health Check                  | `/healthz`                   | Returns system status (CPU, memory, circuit breaker stats).                                               |
 |                        | Base URL                      | `/`                          | Displays basic info (model identifier and slug).                                                          |
-| **Job Management**     | Submit Job                    | `/submit`                    | Accepts input data, queues an async job, returns a unique job ID.                                         |
-|                        | Job Status                    | `/status/{job_id}`           | Check the current status of a job (pending, completed, failed).                                           |
-|                        | Job Result                    | `/result/{job_id}`           | Retrieve output of a completed job; if unfinished, returns current status only.                           |
+| **Job Management**     | Submit Job                    | `/job/submit`                    | Accepts input data, queues an async job, returns a unique job ID.                                         |
+|                        | Job Status                    | `/job/status/{job_id}`           | Check the current status of a job (pending, completed, failed).                                           |
+|                        | Job Result                    | `/job/result/{job_id}`           | Retrieve output of a completed job; if unfinished, returns current status only.                           |
 |                        | Reset Jobs                    | `/jobs/reset`                | Clears all job records (should be secured in production).                                                 |
 | **Metadata**           | Complete Metadata             | `/card`                      | Retrieves all model metadata (name, title, description).                                                  |
 |                        | Specific Metadata Field       | `/card/{field}`              | Fetches a specific metadata field; errors if field not found.                                             |
