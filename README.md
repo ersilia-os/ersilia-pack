@@ -67,61 +67,24 @@ ersilia_model_serve --bundle_path $BUNDLE_PATH --port $PORT
 
 ---
 
-## API Documentation
-
-The Ersilia-Pack API is structured into two main categories: **Metadata** and **App**. Below is an overview of the available endpoints.
-
-### Core Endpoints Overview
-
-- **Documentation Endpoints:**  
-  - **Swagger UI (`/docs`):** Provides an interactive API interface with custom styling and title.  
-  - **ReDoc (`/redoc`):** Offers an alternative documentation view with a comprehensive layout.
-
-- **Health Monitoring:**  
-  - **Health Check (`/healthz`):** Returns detailed system status including CPU, memory usage, and circuit breaker statistics.
-
-- **Root Endpoint:**  
-  - **Base URL (`/`):** Displays basic information, typically returning the model identifier and slug from the metadata.
-
-### Additional APIs Overview
-
-#### Job Management
-
-- **Submit Job (`/submit`):**  
-  Accepts input data and submits a job for asynchronous processing. Upon submission, a unique job ID is generated and the job is queued.
-
-- **Job Status (`/status/{job_id}`):**  
-  Allows users to check the current status of a job (e.g., pending, completed, or failed).
-
-- **Job Result (`/result/{job_id}`):**  
-  Retrieves the output of a completed job. If the job is not finished, it returns the current status with no result.
-
-- **Reset Jobs (`/jobs/reset`):**  
-  Clears all job records. *(Note: For production, secure this endpoint with proper administrative authentication.)*
-
-#### Metadata Endpoints
-
-- **Complete Metadata (`/card`):**  
-  Retrieves all metadata related to the model, including its name, title, and description.
-
-- **Specific Metadata Field (`/card/{field}`):**  
-  Fetches a specific metadata field. Returns an error if the field is not found in the metadata.
-
-#### Run Endpoints
-
-- **Example Data Endpoints:**  
-  - **Example Input (`/run/example/input`):** Provides sample input data for testing.  
-  - **Example Output (`/run/example/output`):** Returns sample output data to demonstrate expected responses.  
-  - **Input Columns (`/run/columns/input`):** Lists the input data headers.  
-  - **Output Columns (`/run/columns/output`):** Lists the output data headers.
-
-- **Execute Job (`/run`):** Supports synchronous execution by processing the input data and returning computed results directly.
-
-#### Model Information
-
-- **Model Status (`/models/status`):**  
-  Provides comprehensive details about the model, including version, runtime environment, and current worker statuses.
-
+| Category               | Endpoint                      | Path                         | Description                                                                                               |
+|------------------------|-------------------------------|------------------------------|-----------------------------------------------------------------------------------------------------------|
+| **Core**               | Swagger UI                    | `/docs`                      | Interactive API interface with custom styling and title.                                                  |
+|                        | ReDoc                         | `/redoc`                     | Alternative documentation view with a comprehensive layout.                                               |
+|                        | Health Check                  | `/healthz`                   | Returns system status (CPU, memory, circuit breaker stats).                                               |
+|                        | Base URL                      | `/`                          | Displays basic info (model identifier and slug).                                                          |
+| **Job Management**     | Submit Job                    | `/submit`                    | Accepts input data, queues an async job, returns a unique job ID.                                         |
+|                        | Job Status                    | `/status/{job_id}`           | Check the current status of a job (pending, completed, failed).                                           |
+|                        | Job Result                    | `/result/{job_id}`           | Retrieve output of a completed job; if unfinished, returns current status only.                           |
+|                        | Reset Jobs                    | `/jobs/reset`                | Clears all job records (should be secured in production).                                                 |
+| **Metadata**           | Complete Metadata             | `/card`                      | Retrieves all model metadata (name, title, description).                                                  |
+|                        | Specific Metadata Field       | `/card/{field}`              | Fetches a specific metadata field; errors if field not found.                                             |
+| **Run**                | Example Input                 | `/run/example/input`         | Provides sample input data for testing.                                                                   |
+|                        | Example Output                | `/run/example/output`        | Returns sample output data to demonstrate expected responses.                                             |
+|                        | Input Columns                 | `/run/columns/input`         | Lists the input data headers.                                                                             |
+|                        | Output Columns                | `/run/columns/output`        | Lists the output data headers.                                                                            |
+|                        | Execute Job (sync)            | `/run`                       | Processes input data synchronously and returns computed results.                                          |
+| **Model Information**  | Model Status                  | `/models/status`             | Provides details on model version, runtime environment, and worker statuses.                              |
 ---
 
 ## Output Orientation
@@ -137,26 +100,14 @@ For more details, please refer to the [Pandas to_json documentation](https://pan
 
 ---
 
-## Features
-
-- **Interactive API Documentation:**  
-  Offers both Swagger UI and ReDoc interfaces with custom styling and titles, ensuring a user-friendly API exploration experience.
-
-- **Asynchronous Job Processing:**  
-  Supports the submission and execution of jobs asynchronously. Users receive a unique job ID and can track job status and results, with robust error handling.
-
-- **Real-time Health Monitoring:**  
-  Monitors system performance including CPU and memory usage, as well as circuit breaker metrics, to ensure reliable service operations.
-
-- **Flexible Metadata Access:**  
-  Provides endpoints to retrieve complete metadata or specific metadata fields, offering a clear view of model details such as name, title, and description.
-
-- **Comprehensive Run Endpoints:**  
-  Facilitates example data retrieval for both input and output, along with dynamic job execution, enabling easy testing and validation of model predictions.
-
-- **Multiple Output Formats:**  
-  Supports various output orientations (records, split, columns, index, and values) based on the Pandas DataFrame `to_json` syntax, allowing flexible JSON responses.
-
+| Feature                          | Description                                                                                                                                                 |
+|----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Interactive API Documentation**| Offers both Swagger UI and ReDoc interfaces with custom styling and titles, ensuring a user-friendly API exploration experience.                            |
+| **Asynchronous Job Processing**  | Supports submission and execution of jobs asynchronously. Users receive a unique job ID and can track job status and results, with robust error handling.  |
+| **Real-time Health Monitoring**  | Monitors system performance—including CPU and memory usage and circuit breaker metrics—to ensure reliable service operations.                               |
+| **Flexible Metadata Access**     | Provides endpoints to retrieve complete metadata or specific metadata fields, offering a clear view of model details such as name, title, and description. |
+| **Comprehensive Run Endpoints**  | Facilitates example data retrieval for both input and output, along with dynamic job execution, enabling easy testing and validation of model predictions. |
+| **Multiple Output Formats**      | Supports various output orientations (records, split, columns, index, and values) based on Pandas DataFrame `to_json` syntax, allowing flexible JSON responses. |
 ---
 
 ## For Developers
