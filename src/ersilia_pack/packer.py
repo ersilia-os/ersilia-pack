@@ -295,13 +295,11 @@ class FastApiAppPacker(object):
     api_names = self._get_api_names_from_sh()
     api_name = api_names[0] if isinstance(api_names, list) else api_names
     api_example_output_file = f"{api_name}_{generic_example_output_file}"
-    print(api_example_output_file)
     if os.path.exists(
       os.path.join(
         self.bundle_dir, "model", "framework", "examples", api_example_output_file
       )
     ):
-      print("Path existed")
       example_output = self._get_example_output(api_example_output_file)
     else:
       example_output = self._get_example_output(generic_example_output_file)
