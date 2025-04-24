@@ -13,11 +13,11 @@ class TestMetadataYml2JsonConverter:
     converter = MetadataYml2JsonConverter(yml_file)
     result = converter.convert()
 
-    assert result["Identifier"] == "model-001"
+    assert result["Identifier"] == "eos0abc"
     assert result["Slug"] == "my-model"
-    assert result["Task"] == ["classification"]
-    assert result["Output"] == ["output.csv"]
-    assert result["Docker Architecture"] == ["amd64", "arm64"]
+    assert result["Task"] == "Representation"
+    assert result["Output"] == ["Compound"]
+    assert result["Docker Architecture"] == ["AMD64", "ARM64"]
 
   def test_incorrect_metadata_conversion(self):
     yml_file = "tests/fixtures/incorrect_metadata.yml"
@@ -34,5 +34,5 @@ class TestMetadataYml2JsonConverter:
 
     with open(json_file, "r") as f:
       data = json.load(f)
-      assert data["Identifier"] == "model-001"
+      assert data["Identifier"] == "eos0abc"
       assert data["Slug"] == "my-model"

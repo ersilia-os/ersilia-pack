@@ -1,18 +1,14 @@
-Identifier: model-001
+Identifier: eos0abc
 Slug: my-model
-Status: active
+Status: Ready
 Title: A Sample Model
 Description: This is a test model.
-Mode: classification
-Input: input.csv
-Input Shape: (100,)
-Task: 
-  - classification
+Input: Compound
+Task: Representation
 Output: 
-  - output.csv
+  - Compound
 Output Type: 
   - probability
-Output Shape: (100,)
 Interpretation: Interpretation text
 Tag: 
   - test
@@ -23,5 +19,5 @@ Contributor: John Doe
 S3: s3://example-bucket
 DockerHub: dockerhub/example-repo
 Docker Architecture: 
-  - amd64
-  - arm64
+  - AMD64
+  - ARM64
