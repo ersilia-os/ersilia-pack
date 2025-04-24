@@ -38,7 +38,7 @@ class MetadataYml2JsonConverter:
         raise Exception("Value is not an int")
     return int(value)
 
-def convert(self):
+  def convert(self):
     data = collections.OrderedDict()
     
     if "Identifier" in self.data:
