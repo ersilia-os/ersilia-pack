@@ -97,6 +97,15 @@ class DockerfileInstallParser(InstallParser):
       else:
         package = package_info[0]
         return [parts[0], package, parts[3]]
+    if len(parts)==7:
+      if parts[2] == "-c" and parts[4]=="-c":
+        package_info = re.split(r"==|=", parts[6])
+        if len(package_info) == 2:
+          package, version = package_info
+          return [parts[0], package, version, parts[3], parts[5]]
+        else:
+          package = package_info[0]
+          return [parts[0], package, parts[3], parts[5]]
 
   def _get_commands(self):
     """
