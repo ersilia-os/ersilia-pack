@@ -379,71 +379,50 @@ def process_chunk(chunk, chunk_idx, base_tag):
   return results, header
 
 
-def generate_redis_key(raw_string):
-  return hashlib.md5(raw_string.encode()).hexdigest()
-
-
 def fetch_cached_results(model_id, data):
-  if "input" in data:
-    result_keys = [generate_redis_key(f"{model_id}:{item['input']}") for item in data]
-  else:
-    result_keys = [generate_redis_key(f"{model_id}:{item}") for item in data]
-
-  cached_results = redis_client.mget(result_keys)
-  results = []
-  missing_inputs = []
-
-  for item, cached in zip(data, cached_results):
-    if cached:
-      results.append(json.loads(cached))
-    else:
-      missing_inputs.append(item)
-  return results, missing_inputs
-
+    hash_key = f"cache:{model_id}"
+    fields = [item["input"] if "input" in item else item for item in data]
+    raw = redis_client.hmget(hash_key, fields)
+    results = []
+    missing = []
+    for item, val in zip(data, raw):
+        if val:
+            results.append(json.loads(val))
+        else:
+            missing.append(item)
+    return results, missing
 
 def cache_missing_results(model_id, missing_inputs, computed_results):
-  for item, result in zip(missing_inputs, computed_results):
-    if "input" in item:
-      result_key = f"{model_id}:{item['input']}"
-    else:
-      result_key = f"{model_id}:{item}"
-      result_key = generate_redis_key(result_key)
-      redis_client.setex(result_key, REDIS_EXPIRATION, json.dumps(result))
-
+    hash_key = f"cache:{model_id}"
+    pipe = redis_client.pipeline()
+    for item, result in zip(missing_inputs, computed_results):
+        field = item["input"] if "input" in item else item
+        pipe.hset(hash_key, field, json.dumps(result))
+    pipe.expire(hash_key, REDIS_EXPIRATION)
+    pipe.execute()
 
 def fetch_or_cache_header(model_id, computed_headers=None):
-  header_key = f"{model_id}:header"
-  cached_header = redis_client.mget(header_key)[0]
-
-  if cached_header:
-    cached_header
-    return (
-      json.loads(cached_header) if isinstance(cached_header, str) else cached_header
-    )
-  elif computed_headers:
-    redis_client.setex(header_key, REDIS_EXPIRATION, json.dumps(computed_headers))
-    return computed_headers
-  return None
-
+    header_key = f"{model_id}:header"
+    cached = redis_client.get(header_key)
+    if cached:
+        return json.loads(cached) if isinstance(cached, str) else cached
+    if computed_headers:
+        redis_client.setex(header_key, REDIS_EXPIRATION, json.dumps(computed_headers))
+        return computed_headers
+    return None
 
 def get_cached_or_compute(model_id, data, tag, max_workers, min_workers, metadata):
-  if is_model_variable(metadata):
-    inputs = extract_input(data)
-    return compute_results(inputs, tag, max_workers, min_workers, metadata)
-
-  if not init_redis():
-    inputs = extract_input(data)
-    return compute_results(inputs, tag, max_workers, min_workers, metadata)
-
-  results, missing_inputs = fetch_cached_results(model_id, data)
-  computed_headers = None
-
-  if missing_inputs:
-    inputs = extract_input(missing_inputs)
-    computed_results, computed_headers = compute_results(
-      inputs, tag, max_workers, min_workers, metadata
-    )
-    cache_missing_results(model_id, missing_inputs, computed_results)
-    results.extend(computed_results)
-  header = fetch_or_cache_header(model_id, computed_headers)
-  return results, header
+    if is_model_variable(metadata) or not init_redis():
+        inputs = extract_input(data)
+        return compute_results(inputs, tag, max_workers, min_workers, metadata)
+    results, missing = fetch_cached_results(model_id, data)
+    computed_headers = None
+    if missing:
+        inputs = extract_input(missing)
+        computed_results, computed_headers = compute_results(
+            inputs, tag, max_workers, min_workers, metadata
+        )
+        cache_missing_results(model_id, missing, computed_results)
+        results.extend(computed_results)
+    header = fetch_or_cache_header(model_id, computed_headers)
+    return results, header
