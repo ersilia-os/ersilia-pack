@@ -36,7 +36,6 @@ async def run(
   max_workers: int = Query(12, ge=1),
   metadata: dict = Depends(get_metadata),
 ):
-
   if not requests:
     raise AppException(status.HTTP_400_BAD_REQUEST, ErrorMessages.EMPTY_REQUEST)
 

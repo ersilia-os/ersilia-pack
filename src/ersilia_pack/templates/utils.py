@@ -71,51 +71,52 @@ def orient_to_json(values, columns, index, orient, output_type):
     output_type = output_type[0].lower()
 
   def convert_value(x):
+    if x == "" or x is None:
+      return None
     if output_type == "string":
       return str(x)
-    elif output_type == "float":
-      if isinstance(x, str):
-        return float(x) if x != "" else None
-      elif isinstance(x, (int, float)):
+    if output_type == "float":
+      if isinstance(x, list) and x:
+        x = x[0]
+      try:
         return float(x)
-      elif isinstance(x, list) and x:
-        return float(x[0])
-      else:
+      except (ValueError, TypeError):
         return None
-    elif output_type == "integer":
-      if isinstance(x, str):
-        return int(x) if x != "" else None
-      elif isinstance(x, (int, float)):
+    if output_type == "integer":
+      if isinstance(x, list) and x:
+        x = x[0]
+      try:
         return int(x)
-      elif isinstance(x, list) and x:
-        return int(x[0])
-      else:
-        return None
+      except (ValueError, TypeError):
+        try:
+          f = float(x)
+        except (ValueError, TypeError):
+          return None
+        if f.is_integer():
+          return int(f)
+        return int(f)
     return x
 
   if values and isinstance(values[0], list):
-    serialized = [[convert_value(x) for x in row] for row in values]
+    serialized = [[convert_value(cell) for cell in row] for row in values]
   else:
-    serialized = [convert_value(x) for x in values]
+    serialized = [convert_value(cell) for cell in values]
 
   if orient == "split":
     return {"columns": columns, "index": index, "data": serialized}
 
   elif orient == "records":
-    _zip = zip
-    _dict = dict
-    _cols = columns
-    return [_dict(_zip(_cols, row)) for row in serialized]
+    return [dict(zip(columns, row)) for row in serialized]
 
   elif orient == "index":
     return {idx: dict(zip(columns, row)) for idx, row in zip(index, serialized)}
 
   elif orient == "columns":
     data = {}
-    for j, col in enumerate(columns):
+    for col_idx, col in enumerate(columns):
       col_data = {}
-      for i, idx in enumerate(index):
-        col_data[make_hashable(idx)] = serialized[i][j]
+      for row_idx, idx_val in enumerate(index):
+        col_data[make_hashable(idx_val)] = serialized[row_idx][col_idx]
       data[col] = col_data
     return data
 
@@ -170,17 +171,19 @@ def get_example_path(example_file):
 
 
 try:
-    to_thread = asyncio.to_thread
+  to_thread = asyncio.to_thread
 except AttributeError:
-    async def to_thread(func, *args, **kwargs):
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, func, *args, **kwargs)
+
+  async def to_thread(func, *args, **kwargs):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, func, *args, **kwargs)
 
 
 async def load_card_metadata(bundle_folder: str):
-    file_path = os.path.join(bundle_folder, "information.json")
-    contents = await to_thread(_read_file, file_path)
-    return json.loads(contents)
+  file_path = os.path.join(bundle_folder, "information.json")
+  contents = await to_thread(_read_file, file_path)
+  return json.loads(contents)
+
 
 def _read_file(file_path: str) -> str:
   with open(file_path, "r") as f:
@@ -297,22 +300,21 @@ def get_cpu_count(logical):
 
 
 def run_in_parallel(num_workers, tag, chunks):
-    num_tasks = len(chunks)
-    chunksize = max(1, num_tasks // (num_workers * 2))
-    print(f"Chunk size: {chunksize} | number worker: {num_workers}")
+  num_tasks = len(chunks)
+  chunksize = max(1, num_tasks // (num_workers * 2))
+  print(f"Chunk size: {chunksize} | number worker: {num_workers}")
 
-    with multiprocessing.Pool(processes=num_workers) as pool:
-        chunk_args = [(chunk, idx, tag) for idx, chunk in enumerate(chunks)]
-        async_result = pool.starmap_async(process_chunk, chunk_args, chunksize=chunksize)
-        results_headers = async_result.get()
+  with multiprocessing.Pool(processes=num_workers) as pool:
+    chunk_args = [(chunk, idx, tag) for idx, chunk in enumerate(chunks)]
+    async_result = pool.starmap_async(process_chunk, chunk_args, chunksize=chunksize)
+    results_headers = async_result.get()
 
-    results, headers = [], []
-    for result, header in results_headers:
-        results.extend(result)
-        headers.append(header)
+  results, headers = [], []
+  for result, header in results_headers:
+    results.extend(result)
+    headers.append(header)
 
-    return results, headers[0]
-
+  return results, headers[0]
 
 
 def compute_parallel(data, tag, max_workers, min_workers):
@@ -325,6 +327,7 @@ def compute_parallel(data, tag, max_workers, min_workers):
 def run_sequential_data(tag, data):
   return process_chunk(data, 0, tag)
 
+
 def is_model_variable(metadata):
   if OUTPUT_CONSISTENCY in metadata:
     if metadata[OUTPUT_CONSISTENCY] == "Variable":
@@ -332,6 +335,7 @@ def is_model_variable(metadata):
   if "Generative" in metadata["Task"]:
     return True
   return False
+
 
 def is_parallel_amenable(data, metadata):
   model_size_thres = compute_max_model_size_threshold()
@@ -343,6 +347,7 @@ def is_parallel_amenable(data, metadata):
     return True
   return False
 
+
 def compute_results(data, tag, max_workers, min_workers, metadata):
   parallel_amenable = is_parallel_amenable(data, metadata)
   print(f"Amenable for multiprocessing: {parallel_amenable}")
@@ -350,6 +355,7 @@ def compute_results(data, tag, max_workers, min_workers, metadata):
     return compute_parallel(data, tag, max_workers, min_workers)
   else:
     return run_sequential_data(tag, data)
+
 
 def process_chunk(chunk, chunk_idx, base_tag):
   tag = f"{base_tag}_{chunk_idx}"
@@ -380,49 +386,52 @@ def process_chunk(chunk, chunk_idx, base_tag):
 
 
 def fetch_cached_results(model_id, data):
-    hash_key = f"cache:{model_id}"
-    fields = [item["input"] if "input" in item else item for item in data]
-    raw = redis_client.hmget(hash_key, fields)
-    results = []
-    missing = []
-    for item, val in zip(data, raw):
-        if val:
-            results.append(json.loads(val))
-        else:
-            missing.append(item)
-    return results, missing
+  hash_key = f"cache:{model_id}"
+  fields = [item["input"] if "input" in item else item for item in data]
+  raw = redis_client.hmget(hash_key, fields)
+  results = []
+  missing = []
+  for item, val in zip(data, raw):
+    if val:
+      results.append(json.loads(val))
+    else:
+      missing.append(item)
+  return results, missing
+
 
 def cache_missing_results(model_id, missing_inputs, computed_results):
-    hash_key = f"cache:{model_id}"
-    pipe = redis_client.pipeline()
-    for item, result in zip(missing_inputs, computed_results):
-        field = item["input"] if "input" in item else item
-        pipe.hset(hash_key, field, json.dumps(result))
-    pipe.expire(hash_key, REDIS_EXPIRATION)
-    pipe.execute()
+  hash_key = f"cache:{model_id}"
+  pipe = redis_client.pipeline()
+  for item, result in zip(missing_inputs, computed_results):
+    field = item["input"] if "input" in item else item
+    pipe.hset(hash_key, field, json.dumps(result))
+  pipe.expire(hash_key, REDIS_EXPIRATION)
+  pipe.execute()
+
 
 def fetch_or_cache_header(model_id, computed_headers=None):
-    header_key = f"{model_id}:header"
-    cached = redis_client.get(header_key)
-    if cached:
-        return json.loads(cached) if isinstance(cached, str) else cached
-    if computed_headers:
-        redis_client.setex(header_key, REDIS_EXPIRATION, json.dumps(computed_headers))
-        return computed_headers
-    return None
+  header_key = f"{model_id}:header"
+  cached = redis_client.get(header_key)
+  if cached:
+    return json.loads(cached) if isinstance(cached, str) else cached
+  if computed_headers:
+    redis_client.setex(header_key, REDIS_EXPIRATION, json.dumps(computed_headers))
+    return computed_headers
+  return None
+
 
 def get_cached_or_compute(model_id, data, tag, max_workers, min_workers, metadata):
-    if is_model_variable(metadata) or not init_redis():
-        inputs = extract_input(data)
-        return compute_results(inputs, tag, max_workers, min_workers, metadata)
-    results, missing = fetch_cached_results(model_id, data)
-    computed_headers = None
-    if missing:
-        inputs = extract_input(missing)
-        computed_results, computed_headers = compute_results(
-            inputs, tag, max_workers, min_workers, metadata
-        )
-        cache_missing_results(model_id, missing, computed_results)
-        results.extend(computed_results)
-    header = fetch_or_cache_header(model_id, computed_headers)
-    return results, header
+  if is_model_variable(metadata) or not init_redis():
+    inputs = extract_input(data)
+    return compute_results(inputs, tag, max_workers, min_workers, metadata)
+  results, missing = fetch_cached_results(model_id, data)
+  computed_headers = None
+  if missing:
+    inputs = extract_input(missing)
+    computed_results, computed_headers = compute_results(
+      inputs, tag, max_workers, min_workers, metadata
+    )
+    cache_missing_results(model_id, missing, computed_results)
+    results.extend(computed_results)
+  header = fetch_or_cache_header(model_id, computed_headers)
+  return results, header
