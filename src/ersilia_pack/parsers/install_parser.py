@@ -1,7 +1,5 @@
 import os
 import re
-import textwrap
-
 from ..utils import eval_conda_prefix
 
 
@@ -33,96 +31,85 @@ class InstallParser:
     return False
 
   def _is_valid_url(self, url):
-    """
-    Validate if the provided URL is a valid Git or HTTP URL.
-
-    Accepts:
-    - git+https://github.com/...
-    - git+ssh://git@github.com/...
-    - https://github.com/...
-    - git+https://my.gitlab.com/repo.git
-    """
     pattern = re.compile(r"^(git\+https://|git\+ssh://|https://).*")
     return bool(pattern.match(url))
 
   def _convert_pip_entry_to_bash(self, command):
-    num_parts = len(command)
-    if num_parts == 2 and command[1].startswith("git+"):
-      if not self._is_valid_url(command[1]):
-        raise ValueError("Invalid Git URL provided")
-      return f"pip install {command[1]}"
-    elif num_parts < 3:
-      raise ValueError("pip command must have at least 3 arguments")
-    else:
-      cmd = f"pip install {command[1]}=={command[2]}"
-      if num_parts == 3:
-        return cmd
+    if len(command) == 2:
+      pkg = command[1]
+      if pkg.startswith("git+"):
+        if not self._is_valid_url(pkg):
+          raise ValueError("Invalid Git URL provided")
+        return f"pip install {pkg}"
       else:
-        # This assumes flags are preceded by double hyphen.
-        # For example, '--index-url' instead of 'index-url'
-        for part in command[3:]:
-          cmd += f" {part}"
-      return cmd
-
-  def _has_version(self, cmd):
-    return any(re.fullmatch(r"\d+(\.\d+)*", item) for item in cmd)
+        raise ValueError("pip install entry must have at least package and version")
+    pkg = command[1]
+    ver = command[2]
+    spec = f"{pkg}=={ver}"
+    flags = command[3:]
+    return f"pip install {spec}" + (" " + " ".join(flags) if flags else "")
 
   def _convert_conda_entry_to_bash(self, command):
-    assert len(command) <= 4, "conda command must have 4 arguments"
-    if "default" in command:
-      if self._has_version(command):
-        cmd = f"conda install {command[1]}={command[2]}"
+    # command: ["conda", "install", flags/channels..., pkg[=ver]]
+    parts = command[1:]
+    cmd = ["conda", "install"]
+    channels = []
+    flags = []
+    pkg_spec = None
+    i = 0
+    while i < len(parts):
+      p = parts[i]
+      if p in ("-c", "--channel") and i + 1 < len(parts):
+        channels += [parts[i], parts[i + 1]]
+        i += 2
+      elif p == "-y":
+        flags.append("-y")
+        i += 1
       else:
-        cmd = f"conda install {command[1]}"
-    else:
-      if self._has_version(command):
-        cmd = f"conda install -c {command[-1]} {command[1]}={command[2]}"
-
-      else:
-        cmd = f"conda install -c {command[-1]} {command[1]}"
-    return cmd
+        pkg_spec = p
+        i += 1
+    if not pkg_spec:
+      raise ValueError("No package specified for conda install")
+    cmd += flags + channels + [pkg_spec]
+    # auto-confirm
+    if "-y" not in flags:
+      cmd.append("-y")
+    return " ".join(cmd)
 
   def _convert_commands_to_bash_script(self):
-    lines = []
     commands = self._get_commands()
     has_conda = self._has_conda(commands)
-    conda_prefix = eval_conda_prefix()
+    conda_prefix = eval_conda_prefix() or ""
     python_exe = self.get_python_exe()
-    for command in commands:
-      if isinstance(command, list):
-        if command[0] == "pip":
-          cmd = f"{python_exe} -m {self._convert_pip_entry_to_bash(command)}"
-        elif command[0] == "conda":
-          cmd = self._convert_conda_entry_to_bash(command)
-          cmd += " -y"
-        else:
-          raise ValueError("Unknown command type specified as a list")
-      else:
-        cmd = command
-      lines += [cmd]
-    txt = ""
-    if has_conda:
-      if self.conda_env_name is None:
-        conda_env_name = "base"
-        self.python_exe = "python_exe=$conda_prefix/bin/python"
-      else:
-        conda_env_name = self.conda_env_name
-        self.python_exe = f"python_exe=$conda_prefix/envs/{conda_env_name}/bin/python"
-      conda_lines = [
-        f"source {conda_prefix}/etc/profile.d/conda.sh",
-        f"conda activate {conda_env_name}",
-      ]
-      lines = [self.python_exe] + conda_lines + lines
+    lines = []
 
-      txt = textwrap.dedent(txt) + os.linesep
-    txt += os.linesep.join(lines)
-    return txt
+    if has_conda:
+      env = self.conda_env_name or "base"
+      header = []
+      if conda_prefix:
+        header.append(f"source {conda_prefix}/etc/profile.d/conda.sh")
+      header.append(f"conda activate {env}")
+      lines.extend(header)
+
+    for cmd in commands:
+      if isinstance(cmd, list):
+        if cmd[0] == "pip":
+          bash = f"{python_exe} -m {self._convert_pip_entry_to_bash(cmd)}"
+        elif cmd[0] == "conda":
+          bash = self._convert_conda_entry_to_bash(cmd)
+        else:
+          raise ValueError(f"Unknown command type: {cmd[0]}")
+      else:
+        bash = cmd
+      lines.append(bash)
+
+    return os.linesep.join(lines)
 
   def write_bash_script(self, file_name=None):
     if file_name is None:
-      file_name = self.file_name.split(".")[0] + ".sh"
-    with open(file_name, "w") as file:
-      file.write(self._convert_commands_to_bash_script())
+      file_name = os.path.splitext(self.file_name)[0] + ".sh"
+    with open(file_name, "w") as f:
+      f.write(self._convert_commands_to_bash_script())
 
   def check_file_exists(self):
     return os.path.exists(self.file_name)
