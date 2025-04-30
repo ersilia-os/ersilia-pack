@@ -1,26 +1,84 @@
-name: Upload Ersilia Pack to DockerHub
+name: "Test Ersilia-Pack [push case: Upload to dockerhub]"
 on:
-  workflow_dispatch:
+  pull_request:
+    branches: [main]
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
   
 jobs:
-
-  test:
+  ruff-format:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the repository
+      - name: Checkout code
         uses: actions/checkout@v4
-      - name: Run tests
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Run Ruff
+        run: ruff check --output-format=github .
+
+  run-pytest:
+    runs-on: ubuntu-latest
+    needs: ruff-format
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: "3.10.10"
+
+      - name: Install dependencies
         run: |
-          pip install . 
-          pip install pytest httpx
-          pytest -vv
+          conda install git-lfs -c conda-forge
+          git-lfs install
+          conda install gh -c conda-forge
+          python -m pip install -e .[test]
+
+      - name: Run pytest
+        run: |     
+           pip install . 
+           pip install pytest httpx
+           pytest -vv
+  
+  test-pipeline:
+    runs-on: ubuntu-latest
+    needs: run-pytest
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          conda install git-lfs -c conda-forge
+          git-lfs install
+          conda install gh -c conda-forge
+          pip install -e .
+
+      - name: Make pipeline.sh executable
+        run: chmod +x ./pipeline.sh
+
+      - name: Run pipeline script
+        run: ./pipeline.sh eos3b5e
 
   upload_ersiliapack_to_dockerhub:
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
-    needs: test
+    needs: test-pipeline
     strategy:
       fail-fast: false
       matrix:

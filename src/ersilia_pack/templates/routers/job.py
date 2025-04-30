@@ -1,4 +1,4 @@
-import asyncio, psutil, uuid, sys
+import asyncio, uuid, sys
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 from fastapi.responses import ORJSONResponse
@@ -14,7 +14,7 @@ from ..utils import (
 )
 from ..exceptions.errors import breaker
 from ..default import OrientEnum, ErrorMessages
-from ..default import MAX_CPU_PERC, MAX_MEM_PERC, ROOT
+from ..default import ROOT
 from ..exceptions.errors import AppException
 
 sys.path.insert(0, ROOT)

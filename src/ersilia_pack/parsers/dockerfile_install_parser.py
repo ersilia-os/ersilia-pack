@@ -73,7 +73,7 @@ class DockerfileInstallParser(InstallParser):
     parts = command.split()
     if len(parts) < 3 or parts[0] != "conda" or parts[1] != "install":
       raise ValueError(
-        "Invalid format. Expected 'conda install [-c channel] package[==version|=version]'"
+        "Invalid. Expected 'conda install [-c channel] package[==version|=version]'"  # ruff: noqa: E501
       )
 
     # Handle the case where no channel is given

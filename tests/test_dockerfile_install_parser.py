@@ -46,6 +46,11 @@ class TestDockerfileInstallParser:
         "--index-url",
         "https://download.pytorch.org/whl/cpu",
       ],
+      [
+        "pip",
+        "molfeat[transformer]",
+        "0.10.0"
+      ]
     ]
     assert parser._has_conda(commands) == False
     install_script = parser._convert_commands_to_bash_script()

@@ -5,6 +5,7 @@ from typing import List
 from enum import Enum
 from pydantic import BaseModel
 
+# ruff: noqa: E501
 ROOT = os.path.dirname(os.path.abspath(__file__))
 MODEL_VERSION = os.environ.get("MODEL_VERSION", "1.0")
 RUNTIME = os.environ.get("RUNTIME", "python")

@@ -4,8 +4,6 @@ import shutil
 import argparse
 import datetime
 import json
-import os
-import shutil
 import subprocess
 import urllib.request
 import uuid
@@ -16,7 +14,7 @@ from .parsers import (
   YAMLInstallParser,
 )
 from .utils import logger
-from .templates.default import generic_example_output_file, FRAMEWORK_FOLDER
+from .templates.default import generic_example_output_file
 
 root = os.path.dirname(os.path.abspath(__file__))
 
