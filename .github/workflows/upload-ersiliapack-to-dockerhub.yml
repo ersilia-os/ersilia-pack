@@ -51,7 +51,7 @@ jobs:
   
   test-pipeline:
     runs-on: ubuntu-latest
-    needs: ruff-format
+    needs: run-pytest
     defaults:
       run:
         shell: bash -el {0}
@@ -76,7 +76,7 @@ jobs:
 
   upload_ersiliapack_to_dockerhub:
     runs-on: ubuntu-latest
-    needs: test
+    needs: test-pipeline
     strategy:
       fail-fast: false
       matrix:
