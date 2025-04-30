@@ -1,4 +1,4 @@
-name: Upload Ersilia Pack to DockerHub
+name: Test Ersilia-Pack [push case: Upload to dockerhub]
 on:
   pull_request:
     branches: [main]
