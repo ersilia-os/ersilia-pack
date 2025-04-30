@@ -83,11 +83,12 @@ def run(
     raise AppException(status.HTTP_422_UNPROCESSABLE_ENTITY, ErrorMessages.EMPTY_DATA)
   tag = str(uuid.uuid4())
   import time
+
   st = time.perf_counter()
   results, header = get_cached_or_compute(
     metadata["Identifier"], data, tag, max_workers, min_workers, metadata
   )
   et = time.perf_counter()
-  print(f"Execution Time: {et-st:.6f}")
+  print(f"Execution Time: {et - st:.6f}")
   results = orient_to_json(results, header, data, orient, metadata["Output Type"])
   return ORJSONResponse(results)
