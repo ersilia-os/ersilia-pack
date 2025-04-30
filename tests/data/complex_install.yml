@@ -3,3 +3,4 @@ commands:
     - ["pip", "pandas", "2.1.4"]
     - ["pip", "torch", "2.4.1", "--index-url", "https://download.pytorch.org/whl/cpu"]
     - ["pip", "git+https://github.com/example.git"]
+    - ["pip", "molfeat[transformer]", "0.10.0"]

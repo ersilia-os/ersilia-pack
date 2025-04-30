@@ -15,7 +15,6 @@ lint.select = [
   "E275",   # missing-whitespace-after-keyword
   "E303",   # too-many-blank-lines
   "E304",   # blank-line-after-decorator
-  "E501",   # line-too-long
   # "E502",
   "E702",   # multiple-statements-on-one-line-semicolon
   "E703",   # useless-semicolon

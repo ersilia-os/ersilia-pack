@@ -44,6 +44,11 @@ class TestYamlInstallParser:
         "https://download.pytorch.org/whl/cpu",
       ],
       ["pip", "git+https://github.com/example.git"],
+      [
+        "pip",
+        "molfeat[transformer]",
+        "0.10.0"
+      ]
     ]
     assert parser._has_conda(commands) == False
     install_script = parser._convert_commands_to_bash_script()

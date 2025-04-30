@@ -5,3 +5,12 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest --maxfail=1 --disable-warnings -q
+        language: system
+        pass_filenames: false
+        always_run: false
