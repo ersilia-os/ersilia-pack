@@ -20,6 +20,7 @@ Ersilia-Pack is a FastAPI-based package designed to seamlessly serve your Ersili
 
 - [Installation](#installation)
 - [Usage](#usage)
+- [Code Quality](#code-quality)
 - [API Documentation](#api-documentation)
   - [Core Endpoints Overview](#core-endpoints-overview)
   - [Additional APIs Overview](#additional-apis-overview)
@@ -65,6 +66,19 @@ After packaging, serve the application with:
 ersilia_model_serve --bundle_path $BUNDLE_PATH --port $PORT
 ```
 
+## Code Quality
+
+To keep our codebase clean and consistent, we use [pre-commit](https://pre-commit.com/) hooks alongside [Ruff](https://github.com/astro-build/ruff) as our linter/formatter.
+
+### 1. Install Dependencies
+
+Make sure you have Python 3.8+ and pip installed, then:
+
+```bash
+pip install pre-commit ruff
+```
+
+## API Documentation
 ---
 
 | Category               | Endpoint                      | Path                         | Description                                                                                               |
