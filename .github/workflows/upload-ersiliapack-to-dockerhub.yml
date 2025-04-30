@@ -45,18 +45,34 @@ jobs:
 
       - name: Run pytest
         run: |     
-          pip install pytest pytest-benchmark pytest-asyncio rdkit-pypi nox rich fuzzywuzzy scipy pyairtable
-          pytest
-  test:
+           pip install . 
+           pip install pytest httpx
+           pytest -vv
+  
+  test-pipeline:
     runs-on: ubuntu-latest
+    needs: ruff-format
+    defaults:
+      run:
+        shell: bash -el {0}
     steps:
-      - name: Check out the repository
-        uses: actions/checkout@v4
-      - name: Run tests
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: "3.10"
+
+      - name: Install dependencies
         run: |
-          pip install . 
-          pip install pytest httpx
-          pytest -vv
+          conda install git-lfs -c conda-forge
+          git-lfs install
+          conda install gh -c conda-forge
+
+      - name: Make pipeline.sh executable
+        run: chmod +x ./pipeline.sh
+
+      - name: Run pipeline script
+        run: ./pipeline.sh eos3b5e
 
   upload_ersiliapack_to_dockerhub:
     runs-on: ubuntu-latest
