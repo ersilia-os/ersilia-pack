@@ -68,7 +68,6 @@ jobs:
           git-lfs install
           conda install gh -c conda-forge
           pip install -e .
-          pip install rdkit-pypi==2022.9.5.0
 
       - name: Make pipeline.sh executable
         run: chmod +x ./pipeline.sh
