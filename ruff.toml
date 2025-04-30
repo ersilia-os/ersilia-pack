@@ -37,6 +37,7 @@ line-length = 88
 
 exclude = [
   "docs/",
+  "models/",
   "tests/",
   "examples/",
   "extra/",

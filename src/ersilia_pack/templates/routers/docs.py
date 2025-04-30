@@ -1,7 +1,6 @@
 from pathlib import Path
-from typing import Any, Dict
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.openapi.docs import (
   get_redoc_html,
   get_swagger_ui_html,
@@ -9,7 +8,6 @@ from fastapi.openapi.docs import (
 from fastapi.staticfiles import StaticFiles
 
 from ..default import MATE_CSS_URL, REDOC_JS_URL
-from ..utils import get_metadata
 
 router = APIRouter()
 

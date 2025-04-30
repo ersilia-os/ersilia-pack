@@ -1,8 +1,7 @@
-import asyncio, csv, os, subprocess, psutil, multiprocessing, json
-from redis import Redis, ConnectionError
+import asyncio, csv, os, subprocess, psutil, multiprocessing, json, redis
+from redis import Redis
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-import time
 from .default import (
   ENVIRONMENT,
   DEFAULT_REDIS_URI,
@@ -138,7 +137,7 @@ def init_redis():
     redis_client = conn_redis()
     print("Redis connected")
     return True
-  except ConnectionError:
+  except redis.ConnectionError:
     redis_client = None
     print("Redis not connected")
     return False
@@ -237,9 +236,9 @@ def create_limiter():
     )
   try:
     conn_redis()
-  except ConnectionError:
+  except redis.ConnectionError:
     if ENVIRONMENT == "prod":
-      raise ConnectionError("Redis is not initialized!")
+      raise redis.ConnectionError("Redis is not initialized!")
 
   return Limiter(
     key_func=get_remote_address,
