@@ -2,6 +2,8 @@ import os
 import re
 from ..utils import eval_conda_prefix
 
+import warnings
+
 
 class InstallParser:
   def __init__(self, file_name, conda_env_name=None):
@@ -25,10 +27,7 @@ class InstallParser:
 
   @staticmethod
   def _has_conda(commands):
-    for command in commands:
-      if isinstance(command, list) and command[0] == "conda":
-        return True
-    return False
+    return any(isinstance(cmd, list) and cmd[0] == "conda" for cmd in commands)
 
   def _is_valid_url(self, url):
     pattern = re.compile(r"^(git\+https://|git\+ssh://|https://).*")
@@ -43,14 +42,33 @@ class InstallParser:
         return f"pip install {pkg}"
       else:
         raise ValueError("pip install entry must have at least package and version")
-    pkg = command[1]
-    ver = command[2]
+    pkg, ver = command[1], command[2]
     spec = f"{pkg}=={ver}"
     flags = command[3:]
     return f"pip install {spec}" + (" " + " ".join(flags) if flags else "")
 
   def _convert_conda_entry_to_bash(self, command):
-    # command: ["conda", "install", flags/channels..., pkg[=ver]]
+    if len(command) >= 4 and command[1] != "install":
+      _, pkg, ver, *rest = command
+      if not re.match(r"^[\w\-.]+(?:={1,2})[\w\-.]+$", f"{pkg}={ver}"):
+        raise ValueError(
+          "Conda shorthand must include valid version pin, e.g. pkg=ver or pkg==ver"
+        )
+      channels = [x for x in rest if x not in ("-y",)]
+      flags = [x for x in rest if x == "-y"]
+      if not channels:
+        warnings.warn(
+          f"No channel specified for conda package '{pkg}', defaulting to 'default'."
+        )
+        channels = ["default"]
+      channel_flags = []
+      for ch in channels:
+        channel_flags.extend(["-c", ch])
+      cmd = ["conda", "install"] + flags + channel_flags + [f"{pkg}={ver}"]
+      if "-y" not in flags:
+        cmd.append("-y")
+      return " ".join(cmd)
+
     parts = command[1:]
     cmd = ["conda", "install"]
     channels = []
@@ -70,8 +88,9 @@ class InstallParser:
         i += 1
     if not pkg_spec:
       raise ValueError("No package specified for conda install")
+    if not re.search(r"={1,2}", pkg_spec):
+      raise ValueError("Conda install entry must specify package and version")
     cmd += flags + channels + [pkg_spec]
-    # auto-confirm
     if "-y" not in flags:
       cmd.append("-y")
     return " ".join(cmd)
@@ -82,27 +101,25 @@ class InstallParser:
     conda_prefix = eval_conda_prefix() or ""
     python_exe = self.get_python_exe()
     lines = []
-
     if has_conda:
       env = self.conda_env_name or "base"
-      header = []
       if conda_prefix:
-        header.append(f"source {conda_prefix}/etc/profile.d/conda.sh")
-      header.append(f"conda activate {env}")
-      lines.extend(header)
-
+        lines.append(f"source {conda_prefix}/etc/profile.d/conda.sh")
+      lines.append(f"conda activate {env}")
     for cmd in commands:
       if isinstance(cmd, list):
         if cmd[0] == "pip":
           bash = f"{python_exe} -m {self._convert_pip_entry_to_bash(cmd)}"
+          print("Pip\n", bash)
         elif cmd[0] == "conda":
           bash = self._convert_conda_entry_to_bash(cmd)
+          print("Conda\n", bash)
+
         else:
           raise ValueError(f"Unknown command type: {cmd[0]}")
       else:
         bash = cmd
       lines.append(bash)
-
     return os.linesep.join(lines)
 
   def write_bash_script(self, file_name=None):
