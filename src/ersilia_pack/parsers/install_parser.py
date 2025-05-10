@@ -110,11 +110,8 @@ class InstallParser:
       if isinstance(cmd, list):
         if cmd[0] == "pip":
           bash = f"{python_exe} -m {self._convert_pip_entry_to_bash(cmd)}"
-          print("Pip\n", bash)
         elif cmd[0] == "conda":
           bash = self._convert_conda_entry_to_bash(cmd)
-          print("Conda\n", bash)
-
         else:
           raise ValueError(f"Unknown command type: {cmd[0]}")
       else:
