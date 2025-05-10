@@ -143,7 +143,7 @@ jobs:
           VERSION: ${{ matrix.version }}
         run: |
           wget -O Dockerfile.conda https://raw.githubusercontent.com/ersilia-os/ersilia/hotfix/support-gpp-compiler-dockerfile/dockerfiles/dockerize-ersiliapack/base/Dockerfile.conda
-          wget -O Dockerfile.conda https://raw.githubusercontent.com/ersilia-os/ersilia/hotfix/support-gpp-compiler-dockerfile/dockerfiles/dockerize-ersiliapack/base/Dockerfile.pip
+          wget -O Dockerfile.pip https://raw.githubusercontent.com/ersilia-os/ersilia/hotfix/support-gpp-compiler-dockerfile/dockerfiles/dockerize-ersiliapack/base/Dockerfile.pip
           wget -O generate_dockerfiles.py https://raw.githubusercontent.com/ersilia-os/ersilia/hotfix/support-gpp-compiler-dockerfile/dockerfiles/dockerize-ersiliapack/base/generate_dockerfiles.py
           python generate_dockerfiles.py $VERSION
           ls -l
