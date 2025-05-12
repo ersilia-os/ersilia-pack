@@ -116,6 +116,7 @@ class InstallParser:
           raise ValueError(f"Unknown command type: {cmd[0]}")
       else:
         bash = cmd
+        print(bash)
       lines.append(bash)
     return os.linesep.join(lines)
 
