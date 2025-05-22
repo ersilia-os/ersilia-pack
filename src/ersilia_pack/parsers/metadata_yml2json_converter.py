@@ -106,33 +106,25 @@ class MetadataYml2JsonConverter:
       data["Environment Size"] = self._tofloat(self.data["Environment Size"])
     if "Image Size" in self.data:
       data["Image Size"] = self._tofloat(self.data["Image Size"])
+    if "Computational Performance 1" in self.data:
+      data["Computational Performance 1"] = self._tofloat(
+        self.data["Computational Performance 1"]
+      )
+    if "Computational Performance 2" in self.data:
+      data["Computational Performance 2"] = self._tofloat(
+        self.data["Computational Performance 2"]
+      )
+    if "Computational Performance 3" in self.data:
+      data["Computational Performance 3"] = self._tofloat(
+        self.data["Computational Performance 3"]
+      )
     if "Computational Performance 4" in self.data:
       data["Computational Performance 4"] = self._tofloat(
         self.data["Computational Performance 4"]
       )
-    if "Computational Performance 7" in self.data:
-      data["Computational Performance 7"] = self._tofloat(
-        self.data["Computational Performance 7"]
-      )
-    if "Computational Performance 12" in self.data:
-      data["Computational Performance 12"] = self._tofloat(
-        self.data["Computational Performance 12"]
-      )
-    if "Computational Performance 20" in self.data:
-      data["Computational Performance 20"] = self._tofloat(
-        self.data["Computational Performance 20"]
-      )
-    if "Computational Performance 34" in self.data:
-      data["Computational Performance 34"] = self._tofloat(
-        self.data["Computational Performance 34"]
-      )
-    if "Computational Performance 58" in self.data:
-      data["Computational Performance 58"] = self._tofloat(
-        self.data["Computational Performance 58"]
-      )
-    if "Computational Performance 100" in self.data:
-      data["Computational Performance 100"] = self._tofloat(
-        self.data["Computational Performance 100"]
+    if "Computational Performance 5" in self.data:
+      data["Computational Performance 5"] = self._tofloat(
+        self.data["Computational Performance 5"]
       )
     if self.json_file is None:
       return data
