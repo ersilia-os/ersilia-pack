@@ -478,8 +478,8 @@ def get_cached_or_compute(
   cache_only,
 ):
   if (
-    is_model_variable(metadata) or not init_redis() or not fetch_cache or not cache_only
-  ):
+    is_model_variable(metadata) or not init_redis() or not fetch_cache
+  ) and not cache_only:
     inputs = extract_input(data)
     return compute_results(inputs, tag, max_workers, min_workers, metadata)
 
@@ -496,7 +496,6 @@ def get_cached_or_compute(
     header = fetch_or_cache_header(model_id)
     if header is None:
       header, _ = load_csv_data(generic_example_output_file)
-      print(header[:10])
 
     results = [json.loads(val) if val else [None] * len(header) for val in raw]
 
