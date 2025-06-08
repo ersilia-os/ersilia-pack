@@ -1,4 +1,5 @@
-import asyncio, csv, os, subprocess, psutil, multiprocessing, json, redis
+import asyncio, csv, os, subprocess, psutil, json, redis
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from redis import Redis
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -21,7 +22,11 @@ from .default import (
   MODEL_ROOT,
   OUTPUT_CONSISTENCY,
   generic_example_input_file,
+  generic_example_output_file,
 )
+
+
+CHUNK_MULTIPLIER = 4
 
 
 def compute_memory_usage() -> float:
@@ -271,21 +276,6 @@ def split_data(data, num_chunks):
   return chunks
 
 
-def resource_planner(data, max_workers):
-  mem_size = int(available_mem() * RESOURCE_SAFETY_MARGIN)
-  max_workers_memory = max(1, int(mem_size // model_size_byte))
-  cpu_count = get_cpu_count(False)
-  data_constraint = len(data) if len(data) > 0 else 1
-  num_workers = min(max_workers, max_workers_memory, cpu_count, data_constraint)
-  return num_workers
-
-
-def compute_num_workers(data, max_workers, min_workers):
-  num_workers = resource_planner(data, max_workers)
-  num_workers = max(num_workers, min_workers)
-  return num_workers
-
-
 def available_mem():
   return psutil.virtual_memory().available
 
@@ -298,29 +288,86 @@ def get_cpu_count(logical):
   return psutil.cpu_count(logical=logical)
 
 
-def run_in_parallel(num_workers, tag, chunks):
+def resource_planner(data, max_workers):
+  total_mem = available_mem()
+  model_mem = model_size_byte or 1
+  safety_mem = int(total_mem * RESOURCE_SAFETY_MARGIN)
+  max_workers_by_mem = max(1, safety_mem // model_mem)
+  phys_cores = get_cpu_count(logical=False) or get_cpu_count(logical=True) or 1
+  max_workers_by_cpu = max(1, phys_cores - 1)
+  data_workers = len(data) if data else 1
+  num_workers = min(max_workers, max_workers_by_mem, max_workers_by_cpu, data_workers)
+  print(
+    f"Resource planner - mem_limit: {max_workers_by_mem}, cpu_limit: {max_workers_by_cpu}, data_limit: {data_workers}, selected: {num_workers}"
+  )
+  return num_workers
+
+
+def compute_num_workers(data, max_workers, min_workers):
+  workers = resource_planner(data, max_workers)
+  workers = max(workers, min_workers)
+  if data and workers > len(data):
+    workers = len(data)
+  print(f"Using {workers} workers (min: {min_workers}, max: {max_workers})")
+  return workers
+
+
+def run_in_parallel(num_workers, tag, chunks, timeout=None):
   num_tasks = len(chunks)
-  chunksize = max(1, num_tasks // (num_workers * 2))
-  print(f"Chunk size: {chunksize} | number worker: {num_workers}")
+  print(f"ProcessPool tasks: {num_tasks} | workers: {num_workers}")
+  results = []
+  headers = []
+  with ProcessPoolExecutor(max_workers=num_workers) as executor:
+    futures = {
+      executor.submit(process_chunk, chunk, idx, tag): idx
+      for idx, chunk in enumerate(chunks)
+    }
+    for future in as_completed(futures, timeout=timeout):
+      idx = futures[future]
+      try:
+        result, header = future.result()
+        results.extend(result)
+        headers.append(header)
+      except Exception as e:
+        print(f"Error processing chunk {idx}: {e}")
+  header = headers[0] if headers else None
+  return results, header
 
-  with multiprocessing.Pool(processes=num_workers) as pool:
-    chunk_args = [(chunk, idx, tag) for idx, chunk in enumerate(chunks)]
-    async_result = pool.starmap_async(process_chunk, chunk_args, chunksize=chunksize)
-    results_headers = async_result.get()
 
-  results, headers = [], []
-  for result, header in results_headers:
-    results.extend(result)
-    headers.append(header)
+def run_in_threads(num_workers, tag, chunks, timeout=None):
+  num_tasks = len(chunks)
+  print(f"ThreadPool tasks: {num_tasks} | workers: {num_workers}")
+  results = []
+  headers = []
+  with ThreadPoolExecutor(max_workers=num_workers) as executor:
+    futures = {
+      executor.submit(process_chunk, chunk, idx, tag): idx
+      for idx, chunk in enumerate(chunks)
+    }
+    for future in as_completed(futures, timeout=timeout):
+      idx = futures[future]
+      try:
+        result, header = future.result()
+        results.extend(result)
+        headers.append(header)
+      except Exception as e:
+        print(f"Error in thread chunk {idx}: {e}")
+  header = headers[0] if headers else None
+  return results, header
 
-  return results, headers[0]
 
-
-def compute_parallel(data, tag, max_workers, min_workers):
+def compute_parallel(data, tag, max_workers, min_workers, metadata):
   num_workers = compute_num_workers(data, max_workers, min_workers)
   os.environ["MAX_WORKERS"] = str(num_workers)
-  chunks = split_data(data, num_workers)
-  return run_in_parallel(num_workers, tag, chunks)
+  max_chunks = num_workers * CHUNK_MULTIPLIER
+  chunk_count = min(len(data), max_chunks) if data else 1
+  chunks = split_data(data, chunk_count)
+  print(f"Scheduling {len(chunks)} chunks across {num_workers} workers")
+
+  if not is_model_variable(metadata) and len(data) < (num_workers * 10):
+    return run_in_threads(num_workers, tag, chunks)
+  else:
+    return run_in_parallel(num_workers, tag, chunks)
 
 
 def run_sequential_data(tag, data):
@@ -351,7 +398,7 @@ def compute_results(data, tag, max_workers, min_workers, metadata):
   parallel_amenable = is_parallel_amenable(data, metadata)
   print(f"Amenable for multiprocessing: {parallel_amenable}")
   if parallel_amenable:
-    return compute_parallel(data, tag, max_workers, min_workers)
+    return compute_parallel(data, tag, max_workers, min_workers, metadata)
   else:
     return run_sequential_data(tag, data)
 
@@ -419,18 +466,53 @@ def fetch_or_cache_header(model_id, computed_headers=None):
   return None
 
 
-def get_cached_or_compute(model_id, data, tag, max_workers, min_workers, metadata):
-  if is_model_variable(metadata) or not init_redis():
+def get_cached_or_compute(
+  model_id,
+  data,
+  tag,
+  max_workers,
+  min_workers,
+  metadata,
+  fetch_cache,
+  save_cache,
+  cache_only,
+):
+  if (
+    is_model_variable(metadata) or not init_redis() or not fetch_cache or not cache_only
+  ):
     inputs = extract_input(data)
     return compute_results(inputs, tag, max_workers, min_workers, metadata)
+
+  if cache_only:
+    hash_key = f"cache:{model_id}"
+    fields = []
+    for item in data:
+      if isinstance(item, dict):
+        fields.append(item.get("input", item))
+      else:
+        fields.append(item)
+    raw = redis_client.hmget(hash_key, fields)
+
+    header = fetch_or_cache_header(model_id)
+    if header is None:
+      header, _ = load_csv_data(generic_example_output_file)
+      print(header[:10])
+
+    results = [json.loads(val) if val else [None] * len(header) for val in raw]
+
+    return results, header
+
   results, missing = fetch_cached_results(model_id, data)
   computed_headers = None
+
   if missing:
     inputs = extract_input(missing)
     computed_results, computed_headers = compute_results(
       inputs, tag, max_workers, min_workers, metadata
     )
-    cache_missing_results(model_id, missing, computed_results)
+    if save_cache:
+      cache_missing_results(model_id, missing, computed_results)
     results.extend(computed_results)
+
   header = fetch_or_cache_header(model_id, computed_headers)
   return results, header

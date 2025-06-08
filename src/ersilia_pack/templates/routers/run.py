@@ -12,7 +12,13 @@ from ..utils import (
   extract_input,
 )
 from ..exceptions.errors import breaker
-from ..default import OrientEnum, ErrorMessages
+from ..default import (
+  OrientEnum,
+  CacheFetchEnum,
+  CacheSavingEnum,
+  CacheOnlyEnum,
+  ErrorMessages,
+)
 from ..default import (
   ROOT,
   generic_example_input_file,
@@ -70,6 +76,9 @@ def run(
   request: Request,
   requests: InputSchema = Body(..., example=exemplary_input),
   orient: OrientEnum = Query(OrientEnum.RECORDS),
+  fetch_cache: bool = Query(CacheFetchEnum.ENABLE),
+  save_cache: bool = Query(CacheSavingEnum.ENABLE),
+  cache_only: bool = Query(CacheOnlyEnum.DISABLE),
   min_workers: int = Query(1, ge=1),
   max_workers: int = Query(12, ge=1),
   metadata: dict = Depends(get_metadata),
@@ -86,7 +95,15 @@ def run(
 
   st = time.perf_counter()
   results, header = get_cached_or_compute(
-    metadata["Identifier"], data, tag, max_workers, min_workers, metadata
+    metadata["Identifier"],
+    data,
+    tag,
+    max_workers,
+    min_workers,
+    metadata,
+    fetch_cache,
+    save_cache,
+    cache_only,
   )
   et = time.perf_counter()
   print(f"Execution Time: {et - st:.6f}")
