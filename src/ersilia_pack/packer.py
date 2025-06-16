@@ -115,7 +115,7 @@ class FastApiAppPacker(object):
         elif all_values == ["float", "integer"]:
           data["Output Type"] = ["Float"]
         else:
-          raise Exception("Unknown output type")
+          raise Exception("Unknown output type as resolved from columns file")
     return data
 
   def _get_info(self):
