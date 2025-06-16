@@ -74,21 +74,6 @@ class OrientEnum(str, Enum):
   INDEX = "index"
 
 
-class CacheFetchEnum(Enum):
-  ENABLE = True
-  DISABLE = False
-
-
-class CacheSavingEnum(Enum):
-  ENABLE = True
-  DISABLE = False
-
-
-class CacheOnlyEnum(Enum):
-  ENABLE = True
-  DISABLE = False
-
-
 class CardField(str, Enum):
   identifier = "Identifier"
   slug = "Slug"

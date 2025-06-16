@@ -14,9 +14,6 @@ from ..utils import (
 from ..exceptions.errors import breaker
 from ..default import (
   OrientEnum,
-  CacheFetchEnum,
-  CacheSavingEnum,
-  CacheOnlyEnum,
   ErrorMessages,
 )
 from ..default import (
@@ -76,9 +73,9 @@ def run(
   request: Request,
   requests: InputSchema = Body(..., example=exemplary_input),
   orient: OrientEnum = Query(OrientEnum.RECORDS),
-  fetch_cache: bool = Query(CacheFetchEnum.ENABLE),
-  save_cache: bool = Query(CacheSavingEnum.ENABLE),
-  cache_only: bool = Query(CacheOnlyEnum.DISABLE),
+  fetch_cache: bool = Query(True),
+  save_cache: bool = Query(True),
+  cache_only: bool = Query(False),
   min_workers: int = Query(1, ge=1),
   max_workers: int = Query(12, ge=1),
   metadata: dict = Depends(get_metadata),
