@@ -500,41 +500,83 @@ def get_cached_or_compute(
   save_cache=True,
   cache_only=False,
 ):
-  if (
-    is_model_variable(metadata) or not init_redis() or not fetch_cache
-  ) and not cache_only:
-    inputs = extract_input(data)
-    return compute_results(inputs, tag, max_workers, min_workers, metadata)
+  hash_key = f"cache:{model_id}"
 
   if cache_only:
-    hash_key = f"cache:{model_id}"
     fields = [
       item.get("input") if isinstance(item, dict) and "input" in item else item
       for item in data
     ]
-    try:
-      raw = redis_client.hmget(hash_key, fields)
-    except Exception as e:
-      logging.warning("Redis hmget in cache_only failed: %s", e)
+
+    if fetch_cache:
+      try:
+        raw = redis_client.hmget(hash_key, fields)
+      except Exception as e:
+        logging.warning("Redis hmget in cache_only failed: %s", e)
+        raw = [None] * len(fields)
+    else:
       raw = [None] * len(fields)
 
     header = fetch_or_cache_header(model_id)
     if header is None:
       header, _ = load_csv_data(generic_example_output_file)
 
-    return [json.loads(val) if val else [None] * len(header) for val in raw], header
+    results = []
+    for val in raw:
+      if val:
+        print(f"If val:{val}")
+        try:
+          results.append(json.loads(val))
+        except Exception:
+          results.append([None] * len(header))
+      else:
+        results.append([None] * len(header))
+    print(f"In cache only the header and the results: {header} | {results}")
 
-  results, missing = fetch_cached_results(model_id, data)
+    return results, header
+
+  if is_model_variable(metadata) or not init_redis():
+    inputs = extract_input(data)
+    return compute_results(inputs, tag, max_workers, min_workers, metadata)
+
+  fields = [
+    item.get("input") if isinstance(item, dict) and "input" in item else item
+    for item in data
+  ]
+
+  if fetch_cache:
+    try:
+      raw = redis_client.hmget(hash_key, fields)
+    except Exception as e:
+      logging.warning("Redis hmget failed: %s", e)
+      raw = [None] * len(fields)
+  else:
+    raw = [None] * len(fields)
+
+  results = []
+  missing = []
+  for item, val in zip(data, raw):
+    if val:
+      try:
+        results.append(json.loads(val))
+      except Exception:
+        results.append([None] * len(header))
+    else:
+      missing.append(item)
+
   computed_headers = None
-
   if missing:
     inputs = extract_input(missing)
     computed_results, computed_headers = compute_results(
       inputs, tag, max_workers, min_workers, metadata
     )
-    if save_cache:
-      cache_missing_results(model_id, missing, computed_results)
     results.extend(computed_results)
 
+    if save_cache:
+      cache_missing_results(model_id, missing, computed_results)
+
   header = fetch_or_cache_header(model_id, computed_headers)
+  if header is None:
+    header, _ = load_csv_data(generic_example_output_file)
+
   return results, header
