@@ -1,4 +1,4 @@
-import asyncio, csv, os, subprocess, psutil, json, redis
+import asyncio, csv, os, subprocess, psutil, json, redis, logging
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from redis import Redis
 from slowapi import Limiter
@@ -433,13 +433,23 @@ def process_chunk(chunk, chunk_idx, base_tag):
 
 def fetch_cached_results(model_id, data):
   hash_key = f"cache:{model_id}"
-  fields = [item["input"] if "input" in item else item for item in data]
-  raw = redis_client.hmget(hash_key, fields)
+  fields = [
+    item["input"] if isinstance(item, dict) and "input" in item else item
+    for item in data
+  ]
+  try:
+    raw = redis_client.hmget(hash_key, fields)
+  except Exception as e:
+    logging.warning("Redis hmget failed: %s", e)
+    return [], data
   results = []
   missing = []
   for item, val in zip(data, raw):
     if val:
-      results.append(json.loads(val))
+      try:
+        results.append(json.loads(val))
+      except Exception:
+        results.append(None)
     else:
       missing.append(item)
   return results, missing
@@ -447,21 +457,34 @@ def fetch_cached_results(model_id, data):
 
 def cache_missing_results(model_id, missing_inputs, computed_results):
   hash_key = f"cache:{model_id}"
-  pipe = redis_client.pipeline()
-  for item, result in zip(missing_inputs, computed_results):
-    field = item["input"] if "input" in item else item
-    pipe.hset(hash_key, field, json.dumps(result))
-  pipe.expire(hash_key, REDIS_EXPIRATION)
-  pipe.execute()
+  try:
+    pipe = redis_client.pipeline()
+    for item, result in zip(missing_inputs, computed_results):
+      field = item.get("input") if isinstance(item, dict) and "input" in item else item
+      pipe.hset(hash_key, field, json.dumps(result))
+    pipe.expire(hash_key, REDIS_EXPIRATION)
+    pipe.execute()
+  except Exception as e:
+    logging.warning("Redis cache save failed: %s", e)
 
 
 def fetch_or_cache_header(model_id, computed_headers=None):
   header_key = f"{model_id}:header"
-  cached = redis_client.get(header_key)
+  cached = None
+  try:
+    cached = redis_client.get(header_key)
+  except Exception as e:
+    logging.warning("Redis get header failed: %s", e)
   if cached:
-    return json.loads(cached) if isinstance(cached, str) else cached
-  if computed_headers:
-    redis_client.setex(header_key, REDIS_EXPIRATION, json.dumps(computed_headers))
+    try:
+      return json.loads(cached) if isinstance(cached, str) else cached
+    except Exception:
+      return cached
+  if computed_headers is not None:
+    try:
+      redis_client.setex(header_key, REDIS_EXPIRATION, json.dumps(computed_headers))
+    except Exception as e:
+      logging.warning("Redis setex header failed: %s", e)
     return computed_headers
   return None
 
@@ -473,9 +496,9 @@ def get_cached_or_compute(
   max_workers,
   min_workers,
   metadata,
-  fetch_cache,
-  save_cache,
-  cache_only,
+  fetch_cache=True,
+  save_cache=True,
+  cache_only=False,
 ):
   if (
     is_model_variable(metadata) or not init_redis() or not fetch_cache
@@ -485,21 +508,21 @@ def get_cached_or_compute(
 
   if cache_only:
     hash_key = f"cache:{model_id}"
-    fields = []
-    for item in data:
-      if isinstance(item, dict):
-        fields.append(item.get("input", item))
-      else:
-        fields.append(item)
-    raw = redis_client.hmget(hash_key, fields)
+    fields = [
+      item.get("input") if isinstance(item, dict) and "input" in item else item
+      for item in data
+    ]
+    try:
+      raw = redis_client.hmget(hash_key, fields)
+    except Exception as e:
+      logging.warning("Redis hmget in cache_only failed: %s", e)
+      raw = [None] * len(fields)
 
     header = fetch_or_cache_header(model_id)
     if header is None:
       header, _ = load_csv_data(generic_example_output_file)
 
-    results = [json.loads(val) if val else [None] * len(header) for val in raw]
-
-    return results, header
+    return [json.loads(val) if val else [None] * len(header) for val in raw], header
 
   results, missing = fetch_cached_results(model_id, data)
   computed_headers = None
