@@ -72,8 +72,11 @@ jobs:
       - name: Make pipeline.sh executable
         run: chmod +x ./pipeline.sh
 
-      - name: Run pipeline script
+      - name: Testing synhchronous endpoints pipeline
         run: ./pipeline.sh eos3b5e
+        
+      - name: Testing asynhchronous endpoints pipeline
+        run: ./async_pipeline.sh eos3b5e
 
   upload_ersiliapack_to_dockerhub:
     if: ${{ github.event_name == 'push' }}
