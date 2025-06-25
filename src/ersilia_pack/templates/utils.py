@@ -1,5 +1,5 @@
 import asyncio, csv, os, subprocess, psutil, json, redis, logging, itertools
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from redis import Redis
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -314,37 +314,30 @@ def compute_num_workers(data, max_workers, min_workers):
 
 
 def run_in_parallel(num_workers, tag, chunks, timeout=None):
-    print(f"ProcessPool tasks: {len(chunks)} | workers: {num_workers}")
-    results = []
-    headers = []
-    with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        for chunk_result, header in executor.map(
-            process_chunk,
-            chunks,
-            range(len(chunks)),
-            itertools.repeat(tag),
-            timeout=timeout
-        ):
-            results.extend(chunk_result)
-            headers.append(header)
-    return results, (headers[0] if headers else None)
+  print(f"ProcessPool tasks: {len(chunks)} | workers: {num_workers}")
+  results = []
+  headers = []
+  with ProcessPoolExecutor(max_workers=num_workers) as executor:
+    for chunk_result, header in executor.map(
+      process_chunk, chunks, range(len(chunks)), itertools.repeat(tag), timeout=timeout
+    ):
+      results.extend(chunk_result)
+      headers.append(header)
+  return results, (headers[0] if headers else None)
 
 
 def run_in_threads(num_workers, tag, chunks, timeout=None):
-    print(f"ThreadPool tasks: {len(chunks)} | workers: {num_workers}")
-    results = []
-    headers = []
-    with ThreadPoolExecutor(max_workers=num_workers) as executor:
-        for chunk_result, header in executor.map(
-            process_chunk,
-            chunks,
-            range(len(chunks)),
-            itertools.repeat(tag),
-            timeout=timeout
-        ):
-            results.extend(chunk_result)
-            headers.append(header)
-    return results, (headers[0] if headers else None)
+  print(f"ThreadPool tasks: {len(chunks)} | workers: {num_workers}")
+  results = []
+  headers = []
+  with ThreadPoolExecutor(max_workers=num_workers) as executor:
+    for chunk_result, header in executor.map(
+      process_chunk, chunks, range(len(chunks)), itertools.repeat(tag), timeout=timeout
+    ):
+      results.extend(chunk_result)
+      headers.append(header)
+  return results, (headers[0] if headers else None)
+
 
 def compute_parallel(data, tag, max_workers, min_workers, metadata):
   num_workers = compute_num_workers(data, max_workers, min_workers)
