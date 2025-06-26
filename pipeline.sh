@@ -1,36 +1,83 @@
 #!/usr/bin/env bash
 set -euo pipefail
+IFS=$'\n\t'
 
-HOME_DIR=$(eval echo "~$USER")
+usage() {
+  cat <<EOF
+Usage: $0 <MODEL_REPO> [PORT] [PAYLOAD_FILE]
+  MODEL_REPO   GitHub repo name under ersilia-os (e.g. eos3b5e)
+  PORT         HTTP port to serve on (default: 8000)
+  PAYLOAD_FILE JSON file containing an array of SMILES to send to /run
+EOF
+  exit 1
+}
+
+[[ $# -ge 1 ]] || usage
 MODEL_ID="$1"
 PORT="${2:-8000}"
+PAYLOAD_FILE="${3:-tests/data/payload.json}"
+LOGFILE="${MODEL_ID}-serve.log"
+HOME_REPO="$HOME/eos/repository/$MODEL_ID"
 
-[ -d eos3b5e ] && rm -rf eos3b5e
-git clone --depth 1 https://github.com/ersilia-os/eos3b5e.git
+echo "→ CI Runner for '$MODEL_ID' on port $PORT"
+echo "→ Using payload: $PAYLOAD_FILE"
+echo "→ Logs at   : $LOGFILE"
+echo
 
-ersilia_model_lint --repo_path "$MODEL_ID"
+for cmd in git ersilia_model_lint ersilia_model_pack ersilia_model_serve curl jq timeout; do
+  command -v "$cmd" >/dev/null 2>&1 \
+    || { echo "✗ '$cmd' not in PATH"; exit 1; }
+done
+
+[[ -d "$MODEL_ID" ]]   && rm -rf "$MODEL_ID"
+[[ -d "$HOME_REPO" ]]  && rm -rf "$HOME_REPO"
+
+echo "→ Cloning https://github.com/ersilia-os/$MODEL_ID.git"
+git clone --depth 1 "https://github.com/ersilia-os/$MODEL_ID.git" 2>&1 | tee "$LOGFILE"
+echo
+
+echo "→ Linting model…"
+ersilia_model_lint --repo_path "$MODEL_ID" 2>&1 | tee -a "$LOGFILE"
+echo
+
+echo "→ Packing model bundle…"
 ersilia_model_pack \
   --repo_path "$MODEL_ID" \
-  --bundles_repo_path "$HOME_DIR"/eos/repository
+  --bundles_repo_path "$HOME/eos/repository" \
+  2>&1 | tee -a "$LOGFILE"
+echo
 
+echo "→ Serving model…"
 ersilia_model_serve \
-  --bundle_path "$HOME_DIR"/eos/repository/"$MODEL_ID" \
-  --port "$PORT" &
+  --bundle_path "$HOME/eos/repository/$MODEL_ID" \
+  --port "$PORT" \
+  2>&1 | tee -a "$LOGFILE" &
 SERVER_PID=$!
-
-cleanup() {
-  echo "Shutting down server (pid $SERVER_PID)…"
-  kill "$SERVER_PID" 2>/dev/null || true
-  wait "$SERVER_PID" 2>/dev/null || true
-}
-trap cleanup EXIT
+trap 'echo; echo "→ Killing server…"; kill $SERVER_PID; exit' EXIT
 
 BASE_URL="http://127.0.0.1:$PORT"
-echo -n "Waiting for $BASE_URL/healthz "
-until curl -sf "$BASE_URL/healthz" >/dev/null; do
-  echo -n "."
-  sleep 1
-done
+
+echo -n "→ Waiting up to 30s for $BASE_URL/healthz "
+if ! timeout 30s bash -c \
+    'until curl -sf '"$BASE_URL"'/healthz >/dev/null; do printf .; sleep 1; done'; then
+  echo; echo "✗ healthz never became healthy. Logs:"; cat "$LOGFILE"; exit 1
+fi
 echo " OK"
 
-exit 0
+echo
+echo "→ Testing POST $BASE_URL/run"
+resp=$(curl -sSf -X POST "$BASE_URL/run" \
+  -H 'Content-Type: application/json' \
+  --data-binary @"$PAYLOAD_FILE") || {
+    echo "✗ /run failed:"; echo "$resp"; exit 1
+  }
+
+echo "$resp" | jq . >/dev/null 2>&1 || {
+  echo "✗ /run did not return JSON:"; echo "$resp"; exit 1
+}
+
+echo "✅ /run returned valid JSON:"
+echo "$resp" | jq
+
+echo
+echo "✅ All CI checks passed—shutting down."
