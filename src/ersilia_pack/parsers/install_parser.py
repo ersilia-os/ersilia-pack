@@ -43,7 +43,10 @@ class InstallParser:
       else:
         raise ValueError("pip install entry must have at least package and version")
     pkg, ver = command[1], command[2]
-    spec = f"{pkg}=={ver}"
+    if ver == "":
+      spec = pkg
+    else:
+      spec = f"{pkg}=={ver}"
     flags = command[3:]
     return f"pip install {spec}" + (" " + " ".join(flags) if flags else "")
 
