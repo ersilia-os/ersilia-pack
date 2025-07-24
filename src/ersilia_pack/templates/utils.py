@@ -1,4 +1,4 @@
-import asyncio, csv, os, subprocess, psutil, json, redis, logging, itertools
+import asyncio, csv, os, subprocess, psutil, json, redis, logging, itertools, numpy, struct
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from redis import Redis
 from slowapi import Limiter
@@ -22,12 +22,66 @@ from .default import (
   MODEL_THRESHOLD_FRACTION,
   MODEL_ROOT,
   OUTPUT_CONSISTENCY,
+  EOS_TMP_TASKS,
   generic_example_input_file,
   generic_example_output_file,
+  cprint,
 )
 
 
 CHUNK_MULTIPLIER = 4
+
+
+def resolve_dtype(dtype):
+  if dtype.lower() == "integer":
+    return numpy.int32
+  if dtype.lower() == "float":
+    return numpy.float32
+  return str
+
+
+def write_smiles_bin(chunk, out_file):
+  smiles_list = list(chunk)
+  meta = {
+    "columns": ["input"],
+    "count": len(smiles_list),
+  }
+  meta_bytes = (json.dumps(meta) + "\n").encode("utf-8")
+
+  with open(out_file, "wb") as f:
+    f.write(meta_bytes)
+    for s in smiles_list:
+      b = s.encode("utf-8")
+      f.write(struct.pack(">I", len(b)))
+      f.write(b)
+
+
+def read_bin(path):
+  if not os.path.exists(path):
+    raise FileNotFoundError(f"{path!r} not found")
+
+  with open(path, "rb") as f:
+    header_line = f.readline()
+    if not header_line:
+      raise ValueError(f"{path!r} is empty or missing header")
+    try:
+      meta = json.loads(header_line.decode("utf-8").rstrip("\n"))
+    except json.JSONDecodeError as e:
+      raise ValueError(f"Invalid JSON header in {path!r}: {header_line!r}") from e
+
+    rows, cols = meta["shape"]
+    dtype = numpy.dtype(meta.get("dtype"))
+    columns = meta["columns"]
+    offset = f.tell()
+
+  arr = numpy.memmap(
+    path,
+    mode="r",
+    dtype=dtype,
+    offset=offset,
+    shape=(rows, cols),
+  )
+  return arr.tolist(), columns
 
 
 def compute_memory_usage() -> float:
@@ -69,26 +123,27 @@ def make_hashable(obj):
 
 
 def orient_to_json(values, columns, index, orient, output_type):
-  print(f"Output type: {output_type}")
   if len(output_type) > 1:
     output_type = "string"
   else:
     output_type = output_type[0].lower()
 
   def convert_value(x):
-    if x == "" or x is None:
+    if x is None or x == "":
       return None
+    if isinstance(x, numpy.generic):
+      x = x.item()
     if output_type == "string":
       return str(x)
     if output_type == "float":
-      if isinstance(x, list) and x:
+      if isinstance(x, (list, numpy.ndarray)) and len(x) > 0:
         x = x[0]
       try:
         return float(x)
       except (ValueError, TypeError):
         return None
     if output_type == "integer":
-      if isinstance(x, list) and x:
+      if isinstance(x, (list, numpy.ndarray)) and len(x) > 0:
         x = x[0]
       try:
         return int(x)
@@ -97,25 +152,25 @@ def orient_to_json(values, columns, index, orient, output_type):
           f = float(x)
         except (ValueError, TypeError):
           return None
-        if f.is_integer():
-          return int(f)
-        return int(f)
+        return int(f) if f.is_integer() else int(f)
     return x
 
-  if values and isinstance(values[0], list):
+  try:
+    n = len(values)
+  except TypeError:
+    n = values.size if isinstance(values, numpy.ndarray) else 0
+
+  if n > 0 and isinstance(values[0], (list, numpy.ndarray)):
     serialized = [[convert_value(cell) for cell in row] for row in values]
   else:
     serialized = [convert_value(cell) for cell in values]
 
   if orient == "split":
     return {"columns": columns, "index": index, "data": serialized}
-
   elif orient == "records":
     return [dict(zip(columns, row)) for row in serialized]
-
   elif orient == "index":
     return {idx: dict(zip(columns, row)) for idx, row in zip(index, serialized)}
-
   elif orient == "columns":
     data = {}
     for col_idx, col in enumerate(columns):
@@ -124,7 +179,6 @@ def orient_to_json(values, columns, index, orient, output_type):
         col_data[make_hashable(idx_val)] = serialized[row_idx][col_idx]
       data[col] = col_data
     return data
-
   elif orient == "values":
     return serialized
 
@@ -141,11 +195,11 @@ def init_redis():
   global redis_client
   try:
     redis_client = conn_redis()
-    print("Redis connected")
+    cprint("Redis connected", fg="green", bold=True)
     return True
   except redis.ConnectionError:
     redis_client = None
-    print("Redis not connected")
+    cprint("Redis not connected", fg="yellow", bold=True)
     return False
 
 
@@ -289,6 +343,20 @@ def get_cpu_count(logical):
   return psutil.cpu_count(logical=logical)
 
 
+def generate_resp_body(results, output_type, header):
+  dtype = resolve_dtype(output_type)
+  n_rows = len(results)
+  n_cols = len(results[0]) if n_rows else 0
+  flat_iter = itertools.chain.from_iterable(results)
+  arr = numpy.fromiter(flat_iter, dtype=dtype, count=n_rows * n_cols)
+  arr = arr.reshape((n_rows, n_cols))
+  del results
+  info = {"dims": header, "shape": [n_rows, n_cols], "dtype": arr.dtype.str}
+  header_line = (json.dumps(info) + "\n").encode("utf-8")
+  body = arr.tobytes()
+  return header_line + body
+
+
 def resource_planner(data, max_workers):
   total_mem = available_mem()
   model_mem = model_size_byte or 1
@@ -298,8 +366,9 @@ def resource_planner(data, max_workers):
   max_workers_by_cpu = max(1, phys_cores - 1)
   data_workers = len(data) if data else 1
   num_workers = min(max_workers, max_workers_by_mem, max_workers_by_cpu, data_workers)
-  print(
-    f"Resource planner - mem_limit: {max_workers_by_mem}, cpu_limit: {max_workers_by_cpu}, data_limit: {data_workers}, selected: {num_workers}"
+  cprint(
+    f"Resource planner - mem_limit: {max_workers_by_mem}, cpu_limit: {max_workers_by_cpu}, data_limit: {data_workers}, selected: {num_workers}",
+    fg="blue",
   )
   return num_workers
 
@@ -309,52 +378,64 @@ def compute_num_workers(data, max_workers, min_workers):
   workers = max(workers, min_workers)
   if data and workers > len(data):
     workers = len(data)
-  print(f"Using {workers} workers (min: {min_workers}, max: {max_workers})")
+  cprint(f"Using {workers} workers (min: {min_workers}, max: {max_workers})", fg="blue")
   return workers
 
 
-def run_in_parallel(num_workers, tag, chunks, timeout=None):
-  print(f"ProcessPool tasks: {len(chunks)} | workers: {num_workers}")
+def run_in_parallel(num_workers, tag, chunks, model_id, task_type, timeout=None):
+  cprint(f"ProcessPool tasks: {len(chunks)} | workers: {num_workers}", fg="blue")
   results = []
   headers = []
   with ProcessPoolExecutor(max_workers=num_workers) as executor:
     for chunk_result, header in executor.map(
-      process_chunk, chunks, range(len(chunks)), itertools.repeat(tag), timeout=timeout
+      process_chunk,
+      chunks,
+      range(len(chunks)),
+      itertools.repeat(tag),
+      itertools.repeat(model_id),
+      itertools.repeat(task_type),
+      timeout=timeout,
     ):
       results.extend(chunk_result)
       headers.append(header)
   return results, (headers[0] if headers else None)
 
 
-def run_in_threads(num_workers, tag, chunks, timeout=None):
-  print(f"ThreadPool tasks: {len(chunks)} | workers: {num_workers}")
+def run_in_threads(num_workers, tag, chunks, model_id, task_type, timeout=None):
+  cprint(f"ThreadPool tasks: {len(chunks)} | workers: {num_workers}", fg="blue")
   results = []
   headers = []
   with ThreadPoolExecutor(max_workers=num_workers) as executor:
     for chunk_result, header in executor.map(
-      process_chunk, chunks, range(len(chunks)), itertools.repeat(tag), timeout=timeout
+      process_chunk,
+      chunks,
+      range(len(chunks)),
+      itertools.repeat(tag),
+      itertools.repeat(model_id),
+      itertools.repeat(task_type),
+      timeout=timeout,
     ):
       results.extend(chunk_result)
       headers.append(header)
   return results, (headers[0] if headers else None)
 
 
-def compute_parallel(data, tag, max_workers, min_workers, metadata):
+def compute_parallel(data, tag, max_workers, min_workers, metadata, task_type):
   num_workers = compute_num_workers(data, max_workers, min_workers)
   os.environ["MAX_WORKERS"] = str(num_workers)
   max_chunks = num_workers * CHUNK_MULTIPLIER
   chunk_count = min(len(data), max_chunks) if data else 1
   chunks = split_data(data, chunk_count)
-  print(f"Scheduling {len(chunks)} chunks across {num_workers} workers")
+  cprint(f"Scheduling {len(chunks)} chunks across {num_workers} workers", fg="blue")
 
   if not is_model_variable(metadata) and len(data) < (num_workers * 10):
-    return run_in_threads(num_workers, tag, chunks)
+    return run_in_threads(num_workers, tag, chunks, metadata["Identifier"], task_type)
   else:
-    return run_in_parallel(num_workers, tag, chunks)
+    return run_in_parallel(num_workers, tag, chunks, metadata["Identifier"], task_type)
 
 
-def run_sequential_data(tag, data):
-  return process_chunk(data, 0, tag)
+def run_sequential_data(tag, data, model_id, task_type):
+  return process_chunk(data, 0, tag, model_id, task_type)
 
 
 def is_model_variable(metadata):
@@ -377,16 +458,16 @@ def is_parallel_amenable(data, metadata):
   return False
 
 
-def compute_results(data, tag, max_workers, min_workers, metadata):
+def compute_results(data, tag, max_workers, min_workers, metadata, task_type):
   parallel_amenable = is_parallel_amenable(data, metadata)
-  print(f"Amenable for multiprocessing: {parallel_amenable}")
+  cprint(f"Amenable for multiprocessing: {parallel_amenable}", fg="blue")
   if parallel_amenable:
-    return compute_parallel(data, tag, max_workers, min_workers, metadata)
+    return compute_parallel(data, tag, max_workers, min_workers, metadata, task_type)
   else:
-    return run_sequential_data(tag, data)
+    return run_sequential_data(tag, data, metadata["Identifier"], task_type)
 
 
-def process_chunk(chunk, chunk_idx, base_tag):
+def _process_chunk_simple(chunk, chunk_idx, base_tag, model_id):
   tag = f"{base_tag}_{chunk_idx}"
   input_f = os.path.join(TEMP_FOLDER, f"input-{tag}.csv")
   output_f = os.path.join(TEMP_FOLDER, f"output-{tag}.csv")
@@ -401,7 +482,6 @@ def process_chunk(chunk, chunk_idx, base_tag):
       f"bash {FRAMEWORK_FOLDER}/run.sh {FRAMEWORK_FOLDER} {input_f} {output_f} {ROOT}"
     )
     subprocess.run(cmd, shell=True, check=True)
-
     with open(output_f, "r", newline="") as csvfile:
       reader = csv.reader(csvfile)
       rows = list(reader)
@@ -412,6 +492,34 @@ def process_chunk(chunk, chunk_idx, base_tag):
       if os.path.exists(fpath):
         os.remove(fpath)
   return results, header
+
+
+def _process_chunk_heavy(chunk, chunk_idx, base_tag, model_id):
+  tag = f"{base_tag}_{chunk_idx}"
+  model_task_path = os.path.join(EOS_TMP_TASKS, model_id)
+
+  if not os.path.exists(model_task_path):
+    os.makedirs(model_task_path, exist_ok=True)
+  input_f_bin = os.path.join(model_task_path, f"input-{tag}.bin")
+  output_f_bin = os.path.join(model_task_path, f"output-{tag}.bin")
+  try:
+    write_smiles_bin(chunk, input_f_bin)
+    cmd = f"bash {FRAMEWORK_FOLDER}/run.sh {FRAMEWORK_FOLDER} {input_f_bin} {output_f_bin} {ROOT}"
+    subprocess.run(cmd, shell=True, check=True)
+    if not os.path.exists(output_f_bin):
+      raise FileNotFoundError(f"{output_f_bin} not found")
+    results, header = read_bin(output_f_bin)
+  finally:
+    for fpath in [input_f_bin, output_f_bin]:
+      if os.path.exists(fpath):
+        os.remove(fpath)
+  return results, header
+
+
+def process_chunk(chunk, chunk_idx, base_tag, model_id, task_type):
+  if task_type == "heavy":
+    return _process_chunk_heavy(chunk, chunk_idx, base_tag, model_id)
+  return _process_chunk_simple(chunk, chunk_idx, base_tag, model_id)
 
 
 def fetch_cached_results(model_id, data):
@@ -482,6 +590,7 @@ def get_cached_or_compute(
   fetch_cache=True,
   save_cache=True,
   cache_only=False,
+  task_type="simple",
 ):
   hash_key = f"cache:{model_id}"
 
@@ -507,20 +616,17 @@ def get_cached_or_compute(
     results = []
     for val in raw:
       if val:
-        print(f"If val:{val}")
         try:
           results.append(json.loads(val))
         except Exception:
           results.append([None] * len(header))
       else:
         results.append([None] * len(header))
-    print(f"In cache only the header and the results: {header} | {results}")
-
     return results, header
 
   if is_model_variable(metadata) or not init_redis():
     inputs = extract_input(data)
-    return compute_results(inputs, tag, max_workers, min_workers, metadata)
+    return compute_results(inputs, tag, max_workers, min_workers, metadata, task_type)
 
   fields = [
     item.get("input") if isinstance(item, dict) and "input" in item else item

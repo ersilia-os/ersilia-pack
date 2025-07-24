@@ -105,7 +105,6 @@ class FastApiAppPacker(object):
         idx = h.index("type")
         all_values = [r[idx] for r in reader]
         all_values = sorted(set(all_values))
-        print(all_values)
         if all_values == ["integer"]:
           data["Output Type"] = ["Integer"]
         elif all_values == ["float"]:
