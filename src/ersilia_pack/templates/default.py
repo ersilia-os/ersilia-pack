@@ -2,12 +2,17 @@ import os, tempfile, traceback, uuid
 from datetime import datetime
 from fastapi.responses import JSONResponse
 from typing import List
+from pathlib import Path
 from enum import Enum
 from pydantic import BaseModel
 
 # ruff: noqa: E501
 ROOT = os.path.dirname(os.path.abspath(__file__))
 MODEL_VERSION = os.environ.get("MODEL_VERSION", "1.0")
+EOS_TMP = os.path.join(os.path.join(str(Path.home()), "eos"), "temp")
+EOS_TMP_TASKS = os.path.join(EOS_TMP, "tasks")
+if not os.path.exists(EOS_TMP_TASKS):
+  os.makedirs(EOS_TMP_TASKS, exist_ok=True)
 RUNTIME = os.environ.get("RUNTIME", "python")
 MIN_WORKERS = int(os.environ.get("MIN_WORKERS", 1))
 MAX_WORKERS = int(os.environ.get("MAX_WORKERS", 1))
@@ -55,6 +60,8 @@ MODEL_THRESHOLD_FRACTION = float(os.getenv("MODEL_THRESHOLD_FRACTION", 0.13))
 HISTOGRAM_TIME_INTERVAL = os.getenv(
   "HISTOGRAM_TIME_INTERVAL", (0.1, 0.3, 0.5, 1.0, 2.0, 3.0, 4.0)
 )
+MEDIA_TYPE = "application/octet-stream"
+CONTENT_DESP = "attachment; filename=result.bin"
 allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "*").strip()
 if allowed_origins_env == "*":
   ALLOWED_ORIGINS = ["*"]
@@ -72,6 +79,11 @@ class OrientEnum(str, Enum):
   VALUES = "values"
   SPLIT = "split"
   INDEX = "index"
+
+
+class TaskTypeEnum(str, Enum):
+  HEAVY = "heavy"
+  SIMPLE = "simple"
 
 
 class CardField(str, Enum):
@@ -124,3 +136,99 @@ class ErrorMessages(str, Enum):
     if ENVIRONMENT != "prod":
       content["traceback"] = traceback.format_exc()
     return JSONResponse(status_code=status_code, content=content)
+
+
+class Ansi:
+  RESET = "\033[0m"
+  BOLD = "\033[1m"
+  DIM = "\033[2m"
+  UNDERLINE = "\033[4m"
+  REVERSE = "\033[7m"
+  FG = {
+    "black": 30,
+    "red": 31,
+    "green": 32,
+    "yellow": 33,
+    "blue": 34,
+    "magenta": 35,
+    "cyan": 36,
+    "white": 37,
+    "bright_black": 90,
+    "bright_red": 91,
+    "bright_green": 92,
+    "bright_yellow": 93,
+    "bright_blue": 94,
+    "bright_magenta": 95,
+    "bright_cyan": 96,
+    "bright_white": 97,
+  }
+  BG = {
+    "on_black": 40,
+    "on_red": 41,
+    "on_green": 42,
+    "on_yellow": 43,
+    "on_blue": 44,
+    "on_magenta": 45,
+    "on_cyan": 46,
+    "on_white": 47,
+    "on_bright_black": 100,
+    "on_bright_red": 101,
+    "on_bright_green": 102,
+    "on_bright_yellow": 103,
+    "on_bright_blue": 104,
+    "on_bright_magenta": 105,
+    "on_bright_cyan": 106,
+    "on_bright_white": 107,
+  }
+
+  @staticmethod
+  def code(*, fg=None, bg=None, bold=False, dim=False, underline=False, reverse=False):
+    """
+    Build the ANSI escape sequence for the given styles.
+    fg, bg: keys in Ansi.FG / Ansi.BG
+    bold, dim, underline, reverse: booleans
+    """
+    parts = []
+    if bold:
+      parts.append("1")
+    if dim:
+      parts.append("2")
+    if underline:
+      parts.append("4")
+    if reverse:
+      parts.append("7")
+    if fg:
+      code = Ansi.FG.get(fg.lower())
+      if code is None:
+        raise ValueError(f"Unknown fg color: {fg}")
+      parts.append(str(code))
+    if bg:
+      code = Ansi.BG.get(bg.lower())
+      if code is None:
+        raise ValueError(f"Unknown bg color: {bg}")
+      parts.append(str(code))
+    if not parts:
+      return ""
+    return f"\033[{';'.join(parts)}m"
+
+  @staticmethod
+  def color(
+    text, *, fg=None, bg=None, bold=False, dim=False, underline=False, reverse=False
+  ):
+    start = Ansi.code(
+      fg=fg, bg=bg, bold=bold, dim=dim, underline=underline, reverse=reverse
+    )
+    end = Ansi.RESET if start else ""
+    return f"{start}{text}{end}"
+
+
+def colored(
+  text, fg=None, bg=None, bold=False, dim=False, underline=False, reverse=False
+):
+  return Ansi.color(
+    text, fg=fg, bg=bg, bold=bold, dim=dim, underline=underline, reverse=reverse
+  )
+
+
+def cprint(text, **kwargs):
+  print(colored(text, **kwargs))
