@@ -16,7 +16,8 @@ dependencies = [
     "pybreaker",
     "redis",
     "psutil",
-    "orjson"
+    "orjson",
+    "numpy"
 ]
 
 [tool.setuptools.packages.find]
