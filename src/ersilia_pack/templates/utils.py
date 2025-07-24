@@ -657,7 +657,7 @@ def get_cached_or_compute(
   if missing:
     inputs = extract_input(missing)
     computed_results, computed_headers = compute_results(
-      inputs, tag, max_workers, min_workers, metadata
+      inputs, tag, max_workers, min_workers, metadata, task_type
     )
     results.extend(computed_results)
 
