@@ -449,8 +449,6 @@ def is_model_variable(metadata):
 
 def is_parallel_amenable(data, metadata):
   model_size_thres = compute_max_model_size_threshold()
-  if is_model_variable(metadata):
-    return True
   if model_size_byte > model_size_thres and len(data) >= int(DATA_SIZE_LOWERBOUND):
     return True
   elif model_size_byte < model_size_thres and len(data) >= int(DATA_SIZE_UPPERBOUND):
