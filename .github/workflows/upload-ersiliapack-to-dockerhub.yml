@@ -69,6 +69,7 @@ jobs:
           conda install gh -c conda-forge
           conda install -y -c conda-forge rdkit
           pip install -e .
+          pip install rdkit-pypi
 
       - name: Make pipeline.sh executable
         run: chmod +x ./pipeline.sh
