@@ -34,7 +34,8 @@ class DockerfileInstallParser(InstallParser):
       raise ValueError("Invalid pip install command")
     pkg_spec = parts[2]
     if pkg_spec.startswith("git+"):
-      return ["pip", pkg_spec]
+      flags = parts[3:]
+      return ["pip", pkg_spec, ""] + flags
     if "==" in pkg_spec:
       pkg, ver = pkg_spec.split("==", 1)
     else:

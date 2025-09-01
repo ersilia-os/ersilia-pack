@@ -1,6 +1,7 @@
 import uuid, sys
 from fastapi import APIRouter, Body, Depends, Query, Request, status
 from fastapi.responses import ORJSONResponse
+from fastapi.responses import Response
 from ..input_schemas.compound.single import InputSchema, exemplary_input
 from ..utils import (
   get_metadata,
@@ -10,16 +11,17 @@ from ..utils import (
   create_limiter,
   rate_limit,
   extract_input,
+  generate_resp_body,
 )
 from ..exceptions.errors import breaker
-from ..default import (
-  OrientEnum,
-  ErrorMessages,
-)
+from ..default import OrientEnum, ErrorMessages, TaskTypeEnum
 from ..default import (
   ROOT,
+  CONTENT_DESP,
+  MEDIA_TYPE,
   generic_example_input_file,
   generic_example_output_file,
+  cprint,
 )
 from ..exceptions.errors import AppException
 
@@ -77,7 +79,8 @@ def run(
   save_cache: bool = Query(True),
   cache_only: bool = Query(False),
   min_workers: int = Query(1, ge=1),
-  max_workers: int = Query(12, ge=1),
+  max_workers: int = Query(16, ge=1),
+  output_type: str = Query("simple"),
   metadata: dict = Depends(get_metadata),
 ):
   if not requests:
@@ -101,8 +104,22 @@ def run(
     fetch_cache,
     save_cache,
     cache_only,
+    output_type,
   )
   et = time.perf_counter()
-  print(f"Execution Time: {et - st:.6f}")
+  cprint(f"Execution Time: {et - st:.6f}", fg="cyan", bold=True)
+  cprint(f"Generating a response for {output_type} task", fg="cyan", bold=True)
+
+  if output_type == TaskTypeEnum.HEAVY:
+    payload = generate_resp_body(results, metadata["Output Type"][0], header)
+    return Response(
+      content=payload,
+      media_type=MEDIA_TYPE,
+      headers={
+        "Content-Disposition": CONTENT_DESP,
+        "Content-Length": str(len(payload)),
+      },
+    )
+
   results = orient_to_json(results, header, data, orient, metadata["Output Type"])
   return ORJSONResponse(results)

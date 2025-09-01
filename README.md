@@ -16,13 +16,13 @@ Ersilia-Pack is a FastAPI-based package designed to seamlessly serve your Ersili
 
 ---
 
-## Release note for v1.1.0
+## *Release note for v1.1.0*
 
 Enhanced caching control via cache_mode
 - The /run endpoint now accepts a new cache_mode parameter (alongside fetch_cache, save_cache, and cache_only) so you can fine-tune exactly how results are saved to Redis, fetched from Redis, or forced through compute-only logic. This makes it easy to switch between full caching, fetch-only, save-only, or bypassing the cache altogether without touching your client code.
 
 - Resilient Redis operations with safe fallbacks
-All Redis calls (HMGET, HSET, GET, SETEX, pipeline expirations) are now wrapped in try/except blocks that log warnings on failure, keep the configured REDIS_EXPIRATION, and silently fall back to computing.
+All Redis calls (`HMGET`, `HSET`, `GET`, `SETEX`, pipeline expirations) are now wrapped in try/except blocks that log warnings on failure, keep the configured REDIS_EXPIRATION, and silently fall back to computing.
 
 ---
 

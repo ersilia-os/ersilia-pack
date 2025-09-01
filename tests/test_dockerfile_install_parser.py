@@ -38,7 +38,7 @@ class TestDockerfileInstallParser:
     commands = parser._get_commands()
     assert commands == [
       ["pip", "rdkit", "2024.3.5"],
-      ["pip", "git+https://github.com/example.git"],
+      ["pip", "git+https://github.com/example.git", ""],
       [
         "pip",
         "torch",

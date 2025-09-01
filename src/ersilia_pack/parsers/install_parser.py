@@ -43,7 +43,10 @@ class InstallParser:
       else:
         raise ValueError("pip install entry must have at least package and version")
     pkg, ver = command[1], command[2]
-    spec = f"{pkg}=={ver}"
+    if ver == "":
+      spec = pkg
+    else:
+      spec = f"{pkg}=={ver}"
     flags = command[3:]
     return f"pip install {spec}" + (" " + " ".join(flags) if flags else "")
 
@@ -108,10 +111,8 @@ class InstallParser:
       if isinstance(cmd, list):
         if cmd[0] == "pip":
           bash = f"{python_exe} -m {self._convert_pip_entry_to_bash(cmd)}"
-          print(bash)
         elif cmd[0] == "conda":
           bash = self._convert_conda_entry_to_bash(cmd)
-          print(bash)
         else:
           raise ValueError(f"Unknown command type: {cmd[0]}")
       else:
