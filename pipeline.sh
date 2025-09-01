@@ -2,6 +2,23 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+CONDA_ENV="test"
+
+if command -v conda >/dev/null 2>&1; then
+  eval "$(conda shell.bash hook)"
+  conda activate "$CONDA_ENV"
+else
+  echo "✗ conda not found in PATH. Make sure Anaconda/Miniconda is installed."
+  exit 1
+fi
+
+if [[ "${CONDA_DEFAULT_ENV:-}" != "$CONDA_ENV" ]]; then
+  echo "✗ Failed to activate conda env '$CONDA_ENV'. Current env: ${CONDA_DEFAULT_ENV:-none}"
+  exit 1
+else
+  echo "→ Conda environment '$CONDA_ENV' activated"
+fi
+
 usage() {
   cat <<EOF
 Usage: $0 <MODEL_REPO> [PORT] [PAYLOAD_FILE]
