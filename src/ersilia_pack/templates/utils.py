@@ -128,6 +128,29 @@ def orient_to_json(values, columns, index, orient, output_type):
   else:
     output_type = output_type[0].lower()
 
+  try:
+    import numpy
+  except ImportError as e:
+    raise e
+
+  def make_hashable(x):
+    try:
+      hash(x)
+      return x
+    except TypeError:
+      pass
+    if isinstance(x, list):
+      return tuple(make_hashable(e) for e in x)
+    if isinstance(x, dict):
+      return tuple(sorted((make_hashable(k), make_hashable(v)) for k, v in x.items()))
+    if isinstance(x, tuple):
+      return tuple(make_hashable(e) for e in x)
+    if isinstance(x, set):
+      return tuple(sorted(make_hashable(e) for e in x))
+    if isinstance(x, numpy.ndarray):
+      return make_hashable(x.tolist())
+    return str(x)
+
   def convert_value(x):
     if x is None or x == "":
       return None
@@ -140,8 +163,8 @@ def orient_to_json(values, columns, index, orient, output_type):
         x = x[0]
       try:
         return float(x)
-      except (ValueError, TypeError):
-        return None
+      except (ValueError, TypeError) as e:
+        raise e
     if output_type == "integer":
       if isinstance(x, (list, numpy.ndarray)) and len(x) > 0:
         x = x[0]
@@ -150,8 +173,8 @@ def orient_to_json(values, columns, index, orient, output_type):
       except (ValueError, TypeError):
         try:
           f = float(x)
-        except (ValueError, TypeError):
-          return None
+        except (ValueError, TypeError) as e:
+          raise e
         return int(f) if f.is_integer() else int(f)
     return x
 

@@ -86,6 +86,7 @@ async def process_job(
     jobs[job_id]["result"] = results
     jobs[job_id]["status"] = "completed"
   except Exception as e:
+    print(f"Exception has occured here: {e}")
     jobs[job_id]["status"] = "failed"
     jobs[job_id]["result"] = {"error": str(e)}
 
@@ -109,6 +110,6 @@ async def get_job_result(job_id: str):
 
 
 @router.post("/jobs/reset")
-async def reset_jobs():  # TODO: this of course requires admin auth
+async def reset_jobs():  # TODO: this ofcourse requires admin auth
   jobs.clear()
   return {"message": "All jobs have been reset."}
