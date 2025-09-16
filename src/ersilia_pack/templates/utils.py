@@ -131,7 +131,8 @@ def orient_to_json(values, columns, index, orient, output_type):
   try:
     import numpy
   except ImportError as e:
-    raise e
+    print(e)
+    numpy = None
 
   def make_hashable(x):
     try:
@@ -139,54 +140,82 @@ def orient_to_json(values, columns, index, orient, output_type):
       return x
     except TypeError:
       pass
-    if isinstance(x, list):
-      return tuple(make_hashable(e) for e in x)
-    if isinstance(x, dict):
-      return tuple(sorted((make_hashable(k), make_hashable(v)) for k, v in x.items()))
-    if isinstance(x, tuple):
-      return tuple(make_hashable(e) for e in x)
-    if isinstance(x, set):
-      return tuple(sorted(make_hashable(e) for e in x))
-    if isinstance(x, numpy.ndarray):
-      return make_hashable(x.tolist())
+    try:
+      if isinstance(x, dict):
+        return tuple(sorted((make_hashable(k), make_hashable(v)) for k, v in x.items()))
+      if isinstance(x, (list, tuple, set)):
+        return tuple(make_hashable(i) for i in x)
+      if numpy is not None and isinstance(x, numpy.ndarray):
+        return tuple(make_hashable(i) for i in x.tolist())
+    except Exception as e:
+      print(e)
     return str(x)
 
   def convert_value(x):
     if x is None or x == "":
       return None
-    if isinstance(x, numpy.generic):
-      x = x.item()
+    try:
+      if numpy is not None and isinstance(x, numpy.generic):
+        x = x.item()
+    except Exception as e:
+      print(e)
     if output_type == "string":
       return str(x)
     if output_type == "float":
-      if isinstance(x, (list, numpy.ndarray)) and len(x) > 0:
-        x = x[0]
+      try:
+        if isinstance(x, (list,)) or (
+          numpy is not None and isinstance(x, numpy.ndarray)
+        ):
+          if len(x) > 0:
+            x = x[0]
+      except Exception as e:
+        print(e)
       try:
         return float(x)
       except (ValueError, TypeError) as e:
-        raise e
+        print(e)
+        return None
     if output_type == "integer":
-      if isinstance(x, (list, numpy.ndarray)) and len(x) > 0:
-        x = x[0]
+      try:
+        if isinstance(x, (list,)) or (
+          numpy is not None and isinstance(x, numpy.ndarray)
+        ):
+          if len(x) > 0:
+            x = x[0]
+      except Exception as e:
+        print(e)
       try:
         return int(x)
-      except (ValueError, TypeError):
+      except (ValueError, TypeError) as e:
+        print(e)
         try:
           f = float(x)
         except (ValueError, TypeError) as e:
-          raise e
+          print(e)
+          return None
         return int(f) if f.is_integer() else int(f)
     return x
 
   try:
     n = len(values)
-  except TypeError:
-    n = values.size if isinstance(values, numpy.ndarray) else 0
+  except TypeError as e:
+    print(e)
+    if numpy is not None and isinstance(values, numpy.ndarray):
+      n = values.size
+    else:
+      n = 0
 
-  if n > 0 and isinstance(values[0], (list, numpy.ndarray)):
-    serialized = [[convert_value(cell) for cell in row] for row in values]
-  else:
-    serialized = [convert_value(cell) for cell in values]
+  try:
+    if n > 0 and (
+      isinstance(values[0], list)
+      or (numpy is not None and isinstance(values[0], numpy.ndarray))
+    ):
+      serialized = [[convert_value(cell) for cell in row] for row in values]
+    else:
+      serialized = [convert_value(cell) for cell in values]
+  except Exception as e:
+    print(e)
+    serialized = []
 
   if orient == "split":
     return {"columns": columns, "index": index, "data": serialized}
@@ -199,7 +228,11 @@ def orient_to_json(values, columns, index, orient, output_type):
     for col_idx, col in enumerate(columns):
       col_data = {}
       for row_idx, idx_val in enumerate(index):
-        col_data[make_hashable(idx_val)] = serialized[row_idx][col_idx]
+        try:
+          col_data[make_hashable(idx_val)] = serialized[row_idx][col_idx]
+        except Exception as e:
+          print(e)
+          col_data[make_hashable(idx_val)] = None
       data[col] = col_data
     return data
   elif orient == "values":
