@@ -11,6 +11,8 @@ from ..utils import (
   create_limiter,
   rate_limit,
   extract_input,
+  cprint,
+  to_thread,
 )
 from ..exceptions.errors import breaker
 from ..default import OrientEnum, ErrorMessages
@@ -72,7 +74,7 @@ async def process_job(
   orient,
 ):
   try:
-    results, header = await asyncio.to_thread(
+    results, header = await to_thread(
       breaker.call,
       get_cached_or_compute,
       identifier,
@@ -86,7 +88,7 @@ async def process_job(
     jobs[job_id]["result"] = results
     jobs[job_id]["status"] = "completed"
   except Exception as e:
-    print(f"Exception has occured here: {e}")
+    cprint(f"Exception has occured when collecting the result: {e}")
     jobs[job_id]["status"] = "failed"
     jobs[job_id]["result"] = {"error": str(e)}
 

@@ -131,7 +131,7 @@ def orient_to_json(values, columns, index, orient, output_type):
   try:
     import numpy
   except ImportError as e:
-    print(e)
+    cprint(e)
     numpy = None
 
   def make_hashable(x):
@@ -148,7 +148,7 @@ def orient_to_json(values, columns, index, orient, output_type):
       if numpy is not None and isinstance(x, numpy.ndarray):
         return tuple(make_hashable(i) for i in x.tolist())
     except Exception as e:
-      print(e)
+      cprint(e)
     return str(x)
 
   def convert_value(x):
@@ -158,7 +158,7 @@ def orient_to_json(values, columns, index, orient, output_type):
       if numpy is not None and isinstance(x, numpy.generic):
         x = x.item()
     except Exception as e:
-      print(e)
+      cprint(e)
     if output_type == "string":
       return str(x)
     if output_type == "float":
@@ -169,11 +169,11 @@ def orient_to_json(values, columns, index, orient, output_type):
           if len(x) > 0:
             x = x[0]
       except Exception as e:
-        print(e)
+        cprint(e)
       try:
         return float(x)
       except (ValueError, TypeError) as e:
-        print(e)
+        cprint(e)
         return None
     if output_type == "integer":
       try:
@@ -183,15 +183,15 @@ def orient_to_json(values, columns, index, orient, output_type):
           if len(x) > 0:
             x = x[0]
       except Exception as e:
-        print(e)
+        cprint(e)
       try:
         return int(x)
       except (ValueError, TypeError) as e:
-        print(e)
+        cprint(e)
         try:
           f = float(x)
         except (ValueError, TypeError) as e:
-          print(e)
+          cprint(e)
           return None
         return int(f) if f.is_integer() else int(f)
     return x
@@ -199,7 +199,7 @@ def orient_to_json(values, columns, index, orient, output_type):
   try:
     n = len(values)
   except TypeError as e:
-    print(e)
+    cprint(e)
     if numpy is not None and isinstance(values, numpy.ndarray):
       n = values.size
     else:
@@ -214,7 +214,7 @@ def orient_to_json(values, columns, index, orient, output_type):
     else:
       serialized = [convert_value(cell) for cell in values]
   except Exception as e:
-    print(e)
+    cprint(e)
     serialized = []
 
   if orient == "split":
@@ -231,7 +231,7 @@ def orient_to_json(values, columns, index, orient, output_type):
         try:
           col_data[make_hashable(idx_val)] = serialized[row_idx][col_idx]
         except Exception as e:
-          print(e)
+          cprint(e)
           col_data[make_hashable(idx_val)] = None
       data[col] = col_data
     return data
