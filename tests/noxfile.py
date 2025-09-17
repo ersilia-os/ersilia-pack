@@ -25,17 +25,12 @@ def ensure_rdkit(session):
 
 
 def ensure_ersilia_tools(session):
-    def _has(cmd: str) -> bool:
-        try:
-            session.run("bash", "-lc", f"command -v {cmd}", external=True, silent=True)
-            return True
-        except nox.command.CommandFailed:
-            return False
-
-    needed = [c for c in ("ersilia_model_lint", "ersilia_model_pack", "ersilia_model_serve") if not _has(c)]
-    if needed:
+    venv_bin = Path(sys.executable).parent
+    tools = ["ersilia_model_lint", "ersilia_model_pack", "ersilia_model_serve"]
+    missing = [t for t in tools if not (venv_bin / t).exists()]
+    if missing:
         session.install("-e", str(NOX_PWD))
-        missing = [c for c in needed if not _has(c)]
+        missing = [t for t in tools if not (venv_bin / t).exists()]
         if missing:
             session.error(f"Missing required CLI(s) after install: {', '.join(missing)}")
 
@@ -54,7 +49,7 @@ def start_server_detached(session, serve_exe: Path, bundle_path: Path, port: int
         f"'{serve_exe}' --bundle_path '{bundle_path}' --port {port} "
         f"> '{logfile}' 2>&1 & echo $! > '{pidfile}'"
     )
-    session.run("bash", "-lc", cmd, external=True)
+    session.run("sh", "-c", cmd, external=True)
     if not pidfile.exists() or not pidfile.read_text().strip().isdigit():
         txt = logfile.read_text() if logfile.exists() else ""
         session.error(f"✗ Failed to start server; no PID written.\nLogs:\n{txt}")
@@ -62,7 +57,7 @@ def start_server_detached(session, serve_exe: Path, bundle_path: Path, port: int
 
 
 def stop_server(session, pid: int):
-    session.run("bash", "-lc", f"kill {pid} >/dev/null 2>&1 || true", external=True)
+    session.run("sh", "-c", f"kill {pid} >/dev/null 2>&1 || true", external=True)
 
 
 @nox.session(venv_backend="virtualenv", python="3.10", reuse_venv=True)
