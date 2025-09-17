@@ -4,7 +4,6 @@ import shutil
 import argparse
 import datetime
 import json
-import subprocess
 import urllib.request
 import uuid
 
@@ -13,7 +12,7 @@ from .parsers import (
   MetadataYml2JsonConverter,
   YAMLInstallParser,
 )
-from .utils import logger
+from .utils import logger, run_command
 from .templates.default import generic_example_output_file
 
 root = os.path.dirname(os.path.abspath(__file__))
@@ -238,7 +237,7 @@ class FastApiAppPacker(object):
 
   def _install_packages(self):
     cmd = f"bash {self.sh_file}"
-    subprocess.Popen(cmd, shell=True).wait()
+    run_command(cmd)
 
   def _get_example_output(self, path):
     with open(

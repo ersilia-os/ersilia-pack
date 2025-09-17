@@ -62,19 +62,15 @@ jobs:
           auto-update-conda: true
           python-version: "3.10"
 
-      - name: Install dependencies
+      - name: Install dependencies and Test endpoints (both sync and async)
         run: |
           conda install git-lfs -c conda-forge
           git-lfs install
           conda install gh -c conda-forge
           pip install -e .
-
-      - name: Make pipeline.sh executable
-        run: chmod +x ./pipeline.sh
-
-      - name: Run pipeline script
-        run: ./pipeline.sh eos3b5e
-
+          pip install nox
+          nox -f tests/noxfile.py -s ci -- eos3b5e 44115  data/payload.json
+          
   upload_ersiliapack_to_dockerhub:
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
