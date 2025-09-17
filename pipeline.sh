@@ -4,20 +4,23 @@ IFS=$'\n\t'
 
 CONDA_ENV="test"
 
-if command -v conda >/dev/null 2>&1; then
-  eval "$(conda shell.bash hook)"
-  conda activate "$CONDA_ENV"
-else
+# --- Conda + env checks (no activation needed) ---
+if ! command -v conda >/dev/null 2>&1; then
   echo "✗ conda not found in PATH. Make sure Anaconda/Miniconda is installed."
   exit 1
 fi
 
-if [[ "${CONDA_DEFAULT_ENV:-}" != "$CONDA_ENV" ]]; then
-  echo "✗ Failed to activate conda env '$CONDA_ENV'. Current env: ${CONDA_DEFAULT_ENV:-none}"
+# Verify the env exists and is runnable
+if ! conda run -n "$CONDA_ENV" --no-capture-output python -c "import sys" >/dev/null 2>&1; then
+  echo "✗ Conda environment '$CONDA_ENV' not found or not runnable."
   exit 1
-else
-  echo "→ Conda environment '$CONDA_ENV' activated"
 fi
+echo "→ Using conda env '$CONDA_ENV' via conda run"
+
+# Helper: run a command inside the env (no activation)
+crun() {
+  conda run -n "$CONDA_ENV" --no-capture-output "$@"
+}
 
 usage() {
   cat <<EOF
@@ -41,9 +44,16 @@ echo "→ Using payload: $PAYLOAD_FILE"
 echo "→ Logs at   : $LOGFILE"
 echo
 
-for cmd in git ersilia_model_lint ersilia_model_pack ersilia_model_serve curl jq timeout; do
+# Tools that must exist on the host PATH (not necessarily in conda env)
+for cmd in git curl jq timeout tee; do
   command -v "$cmd" >/dev/null 2>&1 \
     || { echo "✗ '$cmd' not in PATH"; exit 1; }
+done
+
+# Tools expected inside the conda env
+for ecmd in ersilia_model_lint ersilia_model_pack ersilia_model_serve; do
+  crun command -v "$ecmd" >/dev/null 2>&1 \
+    || { echo "✗ '$ecmd' not found in conda env '$CONDA_ENV'"; exit 1; }
 done
 
 [[ -d "$MODEL_ID" ]]   && rm -rf "$MODEL_ID"
@@ -54,23 +64,23 @@ git clone --depth 1 "https://github.com/ersilia-os/$MODEL_ID.git" 2>&1 | tee "$L
 echo
 
 echo "→ Linting model…"
-ersilia_model_lint --repo_path "$MODEL_ID" 2>&1 | tee -a "$LOGFILE"
+crun ersilia_model_lint --repo_path "$MODEL_ID" 2>&1 | tee -a "$LOGFILE"
 echo
 
 echo "→ Packing model bundle…"
-ersilia_model_pack \
+crun ersilia_model_pack \
   --repo_path "$MODEL_ID" \
   --bundles_repo_path "$HOME/eos/repository" \
   2>&1 | tee -a "$LOGFILE"
 echo
 
 echo "→ Serving model…"
-ersilia_model_serve \
+crun ersilia_model_serve \
   --bundle_path "$HOME/eos/repository/$MODEL_ID" \
   --port "$PORT" \
   2>&1 | tee -a "$LOGFILE" &
 SERVER_PID=$!
-trap 'echo; echo "→ Killing server…"; kill $SERVER_PID; exit' EXIT
+trap 'echo; echo "→ Killing server…"; kill $SERVER_PID 2>/dev/null || true; exit' EXIT
 
 BASE_URL="http://127.0.0.1:$PORT"
 
