@@ -16,9 +16,6 @@ NOX_PWD = Path(__file__).resolve().parent.parent.parent
 nox.options.envdir = str(ERP_PLAYGROUND / ".nox")
 
 
-def ensure_rdkit(session):
-    session.run("python", "-c", "import rdkit", silent=True)
-
 
 def ensure_ersilia_tools(session):
     venv_bin = Path(sys.executable).parent
@@ -69,11 +66,17 @@ def ci(session: nox.Session):
     bundle_path = bundles_root / model_id
     base_url = f"http://127.0.0.1:{port}"
 
-    # ensure_rdkit(session)
     ensure_ersilia_tools(session)
 
     venv_bin = Path(sys.executable).parent
     session.env["PATH"] = str(venv_bin) + os.pathsep + session.env.get("PATH", "")
+
+    shims = ERP_PLAYGROUND / "shims"
+    shims.mkdir(parents=True, exist_ok=True)
+    bash_shim = shims / "bash"
+    bash_shim.write_text('#!/bin/sh\nexec /bin/sh "$@"\n')
+    os.chmod(bash_shim, 0o755)
+    session.env["PATH"] = str(shims) + os.pathsep + session.env["PATH"]
 
     if Path(model_id).exists():
         shutil.rmtree(model_id)
