@@ -22,6 +22,15 @@ crun() {
   conda run -n "$CONDA_ENV" --no-capture-output "$@"
 }
 
+# --- Ensure RDKit is installed inside the env (via pip) ---
+if ! crun python -c "import rdkit" >/dev/null 2>&1; then
+  echo "→ RDKit not found in env '$CONDA_ENV'. Installing via pip (rdkit-pypi)…"
+  crun python -m pip install --upgrade pip >/dev/null
+  crun pip install rdkit-pypi
+else
+  echo "→ RDKit already installed in env '$CONDA_ENV'"
+fi
+
 usage() {
   cat <<EOF
 Usage: $0 <MODEL_REPO> [PORT] [PAYLOAD_FILE]
@@ -44,7 +53,7 @@ echo "→ Using payload: $PAYLOAD_FILE"
 echo "→ Logs at   : $LOGFILE"
 echo
 
-# Tools that must exist on the host PATH (not necessarily in conda env)
+# Tools that must exist on the host PATH
 for cmd in git curl jq timeout tee; do
   command -v "$cmd" >/dev/null 2>&1 \
     || { echo "✗ '$cmd' not in PATH"; exit 1; }
@@ -52,8 +61,10 @@ done
 
 # Tools expected inside the conda env
 for ecmd in ersilia_model_lint ersilia_model_pack ersilia_model_serve; do
-  crun command -v "$ecmd" >/dev/null 2>&1 \
-    || { echo "✗ '$ecmd' not found in conda env '$CONDA_ENV'"; exit 1; }
+  if ! crun bash -lc "command -v $ecmd" >/dev/null 2>&1; then
+    echo "✗ '$ecmd' not found in conda env '$CONDA_ENV'"
+    exit 1
+  fi
 done
 
 [[ -d "$MODEL_ID" ]]   && rm -rf "$MODEL_ID"
@@ -80,14 +91,23 @@ crun ersilia_model_serve \
   --port "$PORT" \
   2>&1 | tee -a "$LOGFILE" &
 SERVER_PID=$!
-trap 'echo; echo "→ Killing server…"; kill $SERVER_PID 2>/dev/null || true; exit' EXIT
+
+cleanup() {
+  echo
+  echo "→ Killing server…"
+  kill "$SERVER_PID" 2>/dev/null || true
+}
+trap cleanup EXIT
 
 BASE_URL="http://127.0.0.1:$PORT"
 
 echo -n "→ Waiting up to 30s for $BASE_URL/healthz "
 if ! timeout 30s bash -c \
     'until curl -sf '"$BASE_URL"'/healthz >/dev/null; do printf .; sleep 1; done'; then
-  echo; echo "✗ healthz never became healthy. Logs:"; cat "$LOGFILE"; exit 1
+  echo
+  echo "✗ healthz never became healthy. Logs:"
+  cat "$LOGFILE"
+  exit 1
 fi
 echo " OK"
 
@@ -96,11 +116,15 @@ echo "→ Testing POST $BASE_URL/run"
 resp=$(curl -sSf -X POST "$BASE_URL/run" \
   -H 'Content-Type: application/json' \
   --data-binary @"$PAYLOAD_FILE") || {
-    echo "✗ /run failed:"; echo "$resp"; exit 1
+    echo "✗ /run failed:"
+    echo "$resp"
+    exit 1
   }
 
 echo "$resp" | jq . >/dev/null 2>&1 || {
-  echo "✗ /run did not return JSON:"; echo "$resp"; exit 1
+  echo "✗ /run did not return JSON:"
+  echo "$resp"
+  exit 1
 }
 
 echo "✅ /run returned valid JSON:"
