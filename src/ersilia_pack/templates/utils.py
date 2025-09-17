@@ -476,7 +476,9 @@ def _process_chunk_simple(chunk, chunk_idx, base_tag, model_id):
       for item in chunk:
         writer.writerow([item])
 
-    cmd = f"conda run -n test bash {FRAMEWORK_FOLDER}/run.sh {FRAMEWORK_FOLDER} {input_f} {output_f} {ROOT}"
+    cmd = (
+      f"bash {FRAMEWORK_FOLDER}/run.sh {FRAMEWORK_FOLDER} {input_f} {output_f} {ROOT}"
+    )
     subprocess.run(cmd, shell=True, check=True)
     with open(output_f, "r", newline="") as csvfile:
       reader = csv.reader(csvfile)
