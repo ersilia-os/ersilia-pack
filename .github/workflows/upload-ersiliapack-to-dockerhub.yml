@@ -79,7 +79,7 @@ jobs:
           pkill -f uvicorn || true
           nox -f tests/nox/noxfile.py -s ci -p 3.10 -- eos3b5e 14466 eos3b5e  
           pkill -f uvicorn || true
-          nox -f tests/nox/noxfile.py -s ci -p 3.11 -- eos5gge 14467 eos5gge  
+          nox -f tests/nox/noxfile.py -s ci -p 3.11 -- eos5guo 14467 eos5guo  
           pkill -f uvicorn || true
           nox -f tests/nox/noxfile.py -s ci -p 3.12 -- eos5cl7 14468 eos5cl7  
 
