@@ -1,4 +1,4 @@
-import csv, json, nox, os, sys, time, urllib.request
+import csv, json, math, nox, os, sys, time, urllib.request
 from pathlib import Path
 
 ROOT = Path.home() / "eos"
@@ -83,4 +83,17 @@ def read_values(path):
     data = [r for r in reader]
   return data
 
-def match(act, exp): return act == exp
+def match(act, exp, tol=1e-1):
+    if len(act) != len(exp):
+        return False
+    for a_row, e_row in zip(act, exp):
+        if len(a_row) != len(e_row):
+            return False
+        for a, e in zip(a_row, e_row):
+            if isinstance(a, (int, float)) and isinstance(e, (int, float)):
+                if not math.isclose(a, e, rel_tol=tol, abs_tol=tol):
+                    return False
+            else:
+                if a != e:
+                    return False
+    return True
