@@ -74,9 +74,13 @@ jobs:
       - name: Test endpoints (both sync and async)
         run: |
           nox -f tests/nox/noxfile.py -s ci -p 3.8 -- eos43at 14463 eos43at
-          nox -f tests/nox/noxfile.py -s ci -p 3.9 -- eos6m4j 14567 eos6m4j
+          pkill -f uvicorn || true
+          nox -f tests/nox/noxfile.py -s ci -p 3.9 -- eos6oli 14567 eos6oli
+          pkill -f uvicorn || true
           nox -f tests/nox/noxfile.py -s ci -p 3.10 -- eos3b5e 14466 eos3b5e  
+          pkill -f uvicorn || true
           nox -f tests/nox/noxfile.py -s ci -p 3.11 -- eos5gge 14467 eos5gge  
+          pkill -f uvicorn || true
           nox -f tests/nox/noxfile.py -s ci -p 3.12 -- eos5cl7 14468 eos5cl7  
 
   upload_ersiliapack_to_dockerhub:
