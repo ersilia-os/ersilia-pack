@@ -69,7 +69,7 @@ jobs:
           conda install gh -c conda-forge
           pip install -e .
           pip install nox
-          nox -f tests/noxfile.py -s ci -- eos3b5e 44115  data/payload.json
+          nox -f tests/noxfile.py -s ci
           
   upload_ersiliapack_to_dockerhub:
     if: ${{ github.event_name == 'push' }}
