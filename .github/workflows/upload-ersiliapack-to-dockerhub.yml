@@ -56,11 +56,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - py: "3.9"  ; model: eos43at ; port: 14463
-          - py: "3.10" ; model: eos6oli ; port: 14567
-          - py: "3.11" ; model: eos3b5e ; port: 14466
-          - py: "3.12" ; model: eos5guo ; port: 17467
-          - py: "3.12" ; model: eos5cl7 ; port: 13468
+          - py: "3.9"
+            model: eos43at
+            port: 14463
+          - py: "3.10"
+            model: eos6oli
+            port: 14567
+          - py: "3.11"
+            model: eos3b5e
+            port: 14466
+          - py: "3.12"
+            model: eos5guo
+            port: 17467
+          - py: "3.12"
+            model: eos5cl7
+            port: 13468
     defaults:
       run:
         shell: bash -el {0}
@@ -99,6 +109,7 @@ jobs:
           pkill -f uvicorn || true
           rm -rf ~/eos/repository ~/eos/erp_playground || true
           df -h
+
 
   upload_ersiliapack_to_dockerhub:
     if: ${{ github.event_name == 'push' }}
