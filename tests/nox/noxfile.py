@@ -10,7 +10,7 @@ PWD = Path(__file__).resolve().parent.parent.parent
 nox.options.envdir = str(PLAY / ".nox")
 
 @nox.session(
-  venv_backend="conda", python=["3.9", "3.10", "3.11", "3.12"], reuse_venv=True
+  venv_backend="conda", python=["3.8" ,"3.9", "3.10", "3.11", "3.12"], reuse_venv=True
 )
 def ci(s):
   model = s.posargs[0] if len(s.posargs) >= 1 else "eos3b5e"
