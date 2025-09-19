@@ -69,9 +69,9 @@ jobs:
           conda install gh -c conda-forge
           pip install -e .
           pip install nox
-          nox -f tests/nox/noxfile.py -s ci -p 3.8 -- eos43at 14463 ../data/payload.json eos43at
-          nox -f tests/nox/noxfile.py -s ci -p 3.9 -- eos4e40 14465 ../data/payload.json eos4e40
-          nox -f tests/nox/noxfile.py -s ci -p 3.10 -- eos3b5e 14466 ../data/payload.json eos3b5e
+          nox -f tests/nox/noxfile.py -s ci -p 3.8 -- eos43at 14463 eos43at
+          nox -f tests/nox/noxfile.py -s ci -p 3.9 -- eos4e40 14465 eos4e40
+          nox -f tests/nox/noxfile.py -s ci -p 3.10 -- eos3b5e 14466 eos3b5e
           
   upload_ersiliapack_to_dockerhub:
     if: ${{ github.event_name == 'push' }}

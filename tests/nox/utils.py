@@ -6,6 +6,7 @@ PLAY = ROOT / "erp_playground"
 PLAY.mkdir(parents=True, exist_ok=True)
 PWD = Path(__file__).resolve().parent.parent.parent
 
+
 def tools(s):
   b = Path(sys.executable).parent
   need = [
@@ -76,6 +77,7 @@ def ready(base, secs=30):
     time.sleep(1)
   return None
 
+
 def read_values(path):
   with open(path, "r") as f:
     reader = csv.reader(f)
@@ -83,17 +85,18 @@ def read_values(path):
     data = [r for r in reader]
   return data
 
+
 def match(act, exp, tol=1e-1):
-    if len(act) != len(exp):
-        return False
-    for a_row, e_row in zip(act, exp):
-        if len(a_row) != len(e_row):
-            return False
-        for a, e in zip(a_row, e_row):
-            if isinstance(a, (int, float)) and isinstance(e, (int, float)):
-                if not math.isclose(a, e, rel_tol=tol, abs_tol=tol):
-                    return False
-            else:
-                if a != e:
-                    return False
-    return True
+  if len(act) != len(exp):
+    return False
+  for a_row, e_row in zip(act, exp):
+    if len(a_row) != len(e_row):
+      return False
+    for a, e in zip(a_row, e_row):
+      if isinstance(a, (int, float)) and isinstance(e, (int, float)):
+        if not math.isclose(a, e, rel_tol=tol, abs_tol=tol):
+          return False
+      else:
+        if a != e:
+          return False
+  return True
