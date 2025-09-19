@@ -52,25 +52,65 @@ jobs:
   test-pipeline:
     runs-on: ubuntu-latest
     needs: run-pytest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - py: "3.8"
+            model: eos43at
+            port: 14463
+          - py: "3.9"
+            model: eos6oli
+            port: 14567
+          - py: "3.10"
+            model: eos3b5e
+            port: 14466
+          - py: "3.11"
+            model: eos5guo
+            port: 17467
+          - py: "3.12"
+            model: eos5cl7
+            port: 13468
     defaults:
       run:
         shell: bash -el {0}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          docker system prune -af || true
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/share/dotnet || true
+          conda clean -a -y || true
+          pip cache purge || true
+          df -h
+
       - uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
-          python-version: "3.10"
+          python-version: ${{ matrix.py }}
 
-      - name: Install dependencies and Test endpoints (both sync and async)
+      - name: Install deps
         run: |
-          conda install git-lfs -c conda-forge
+          conda install -y -c conda-forge git-lfs gh
           git-lfs install
-          conda install gh -c conda-forge
           pip install -e .
-          pip install nox
-          nox -f tests/noxfile.py -s ci -- eos3b5e 44115  data/payload.json
-          
+          pip install nox requests
+
+      - name: Run nox
+        run: |
+          set -e
+          nox -f tests/nox/noxfile.py -s ci-${{ matrix.py }} -- \
+            ${{ matrix.model }} ${{ matrix.port }} ${{ matrix.model }}
+
+      - name: Cleanup
+        if: always()
+        run: |
+          pkill -f uvicorn || true
+          rm -rf ~/eos/repository ~/eos/erp_playground || true
+          df -h
+
+
   upload_ersiliapack_to_dockerhub:
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
