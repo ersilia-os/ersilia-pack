@@ -20,42 +20,56 @@ def run_command(cmd, quiet=None):
     display_cmd = " ".join(shlex.quote(x) for x in run_cmd)
 
   start = datetime.datetime.now()
-  result = subprocess.run(
+
+  proc = subprocess.Popen(
     run_cmd,
     shell=shell,
     stdout=subprocess.PIPE,
     stderr=subprocess.PIPE,
     text=True,
-    env=os.environ,
+    bufsize=1,
+    universal_newlines=True,
   )
+
+  stdout_lines = []
+  stderr_lines = []
+
+  print(f"[{start.strftime('%Y-%m-%d %H:%M:%S')}] $ {display_cmd}")
+
+  for line in proc.stdout:
+    line = line.rstrip("\n")
+    stdout_lines.append(line)
+    print(line)
+    if not quiet:
+      logger.info(line)
+
+  for line in proc.stderr:
+    line = line.rstrip("\n")
+    stderr_lines.append(line)
+    print(line)
+    if not quiet:
+      logger.info(line)
+
+  proc.wait()
   end = datetime.datetime.now()
 
+  stdout_str = "\n".join(stdout_lines)
+  stderr_str = "\n".join(stderr_lines)
+
   CommandResult = namedtuple("CommandResult", ["returncode", "stdout", "stderr"])
-  stdout_str = result.stdout.strip()
-  stderr_str = result.stderr.strip()
   output = CommandResult(
-    returncode=result.returncode, stdout=stdout_str, stderr=stderr_str
+    returncode=proc.returncode,
+    stdout=stdout_str,
+    stderr=stderr_str,
   )
 
-  log_lines = [
-    f"[{start.strftime('%Y-%m-%d %H:%M:%S')}] $ {display_cmd}",
-  ]
-  if stdout_str:
-    log_lines += ["stdout:", stdout_str]
-  if stderr_str:
-    log_lines += ["stderr:", stderr_str]
-  log_lines += [
-    f"returncode: {result.returncode}",
-    f"duration: {(end - start).total_seconds():.3f}s",
-    "-" * 40,
-  ]
-  print("\n".join(log_lines))
-
-  if not quiet:
-    if stdout_str:
-      logger.error(stdout_str)
-    if stderr_str:
-      logger.error(stderr_str)
+  print(
+    "\n".join([
+      f"returncode: {proc.returncode}",
+      f"duration: {(end - start).total_seconds():.3f}s",
+      "-" * 40,
+    ])
+  )
 
   return output
 

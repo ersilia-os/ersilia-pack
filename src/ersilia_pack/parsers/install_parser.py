@@ -113,10 +113,18 @@ class InstallParser:
           bash = f"{python_exe} -m {self._convert_pip_entry_to_bash(cmd)}"
         elif cmd[0] == "conda":
           bash = self._convert_conda_entry_to_bash(cmd)
+        elif cmd[0].upper() == "RUN":
+          if len(cmd) < 2:
+            raise ValueError("RUN entry must include a command")
+          bash = " ".join(cmd[1:])
         else:
           raise ValueError(f"Unknown command type: {cmd[0]}")
       else:
-        bash = cmd
+        s = str(cmd).lstrip()
+        if s.upper().startswith("RUN "):
+          bash = s[4:]
+        else:
+          bash = s
       lines.append(bash)
     return os.linesep.join(lines)
 
