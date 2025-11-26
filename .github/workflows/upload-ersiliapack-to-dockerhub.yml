@@ -68,7 +68,7 @@ jobs:
             model: eos5guo
             port: 17467
           - py: "3.12"
-            model: eos5cl7
+            model: eos6ojg
             port: 13468
     defaults:
       run:
