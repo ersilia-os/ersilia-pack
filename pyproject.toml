@@ -17,6 +17,7 @@ dependencies = [
     "redis",
     "psutil",
     "orjson",
+    "packaging",
     "numpy"
 ]
 
