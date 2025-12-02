@@ -1,8 +1,7 @@
 import os
 import re
-from ..utils import eval_conda_prefix
-
 import warnings
+from ..utils import eval_conda_prefix
 
 
 class InstallParser:
@@ -42,11 +41,13 @@ class InstallParser:
         return f"pip install {pkg}"
       else:
         raise ValueError("pip install entry must have at least package and version")
+
     pkg, ver = command[1], command[2]
     if ver == "":
       spec = pkg
     else:
       spec = f"{pkg}=={ver}"
+
     flags = command[3:]
     return f"pip install {spec}" + (" " + " ".join(flags) if flags else "")
 
@@ -78,6 +79,7 @@ class InstallParser:
     flags = []
     pkg_spec = None
     i = 0
+
     while i < len(parts):
       p = parts[i]
       if p in ("-c", "--channel") and i + 1 < len(parts):
@@ -89,11 +91,14 @@ class InstallParser:
       else:
         pkg_spec = p
         i += 1
+
     if not pkg_spec:
       raise ValueError("No package specified for conda install")
+
     cmd += flags + channels + [pkg_spec]
     if "-y" not in flags:
       cmd.append("-y")
+
     return " ".join(cmd)
 
   def _convert_commands_to_bash_script(self):
@@ -102,30 +107,53 @@ class InstallParser:
     conda_prefix = eval_conda_prefix() or ""
     python_exe = self.get_python_exe()
     lines = []
+
     if has_conda:
       env = self.conda_env_name or "base"
       if conda_prefix:
         lines.append(f"source {conda_prefix}/etc/profile.d/conda.sh")
       lines.append(f"conda activate {env}")
+
+    APT_COMMANDS = ("apt", "apt-get", "apt-cache", "apt-key")
+
     for cmd in commands:
       if isinstance(cmd, list):
-        if cmd[0] == "pip":
+        head = cmd[0]
+
+        if head == "pip":
           bash = f"{python_exe} -m {self._convert_pip_entry_to_bash(cmd)}"
-        elif cmd[0] == "conda":
+
+        elif head == "conda":
           bash = self._convert_conda_entry_to_bash(cmd)
-        elif cmd[0].upper() == "RUN":
+
+        elif head.upper() == "RUN":
           if len(cmd) < 2:
             raise ValueError("RUN entry must include a command")
           bash = " ".join(cmd[1:])
+
+        elif head in APT_COMMANDS:
+          bash = " ".join(cmd)
+
         else:
           raise ValueError(f"Unknown command type: {cmd[0]}")
+
       else:
         s = str(cmd).lstrip()
+
         if s.upper().startswith("RUN "):
           bash = s[4:]
+
         else:
-          bash = s
+          head = s.split()[0]
+
+          if head in APT_COMMANDS:
+            bash = s
+
+          else:
+            bash = s
+
       lines.append(bash)
+
     return os.linesep.join(lines)
 
   def write_bash_script(self, file_name=None):
