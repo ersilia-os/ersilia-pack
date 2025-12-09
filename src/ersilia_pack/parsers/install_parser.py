@@ -40,14 +40,9 @@ class InstallParser:
           raise ValueError("Invalid Git URL provided")
         return f"pip install {pkg}"
       else:
-        raise ValueError("pip install entry must have at least package and version")
-
+        raise ValueError("pip install entry must include version")
     pkg, ver = command[1], command[2]
-    if ver == "":
-      spec = pkg
-    else:
-      spec = f"{pkg}=={ver}"
-
+    spec = pkg if ver == "" else f"{pkg}=={ver}"
     flags = command[3:]
     return f"pip install {spec}" + (" " + " ".join(flags) if flags else "")
 
@@ -55,15 +50,11 @@ class InstallParser:
     if len(command) >= 4 and command[1] != "install":
       _, pkg, ver, *rest = command
       if not re.match(r"^[\w\-.]+(?:={1,2})[\w\-.]+$", f"{pkg}={ver}"):
-        raise ValueError(
-          "Conda shorthand must include valid version pin, e.g. pkg=ver or pkg==ver"
-        )
+        raise ValueError("Invalid conda version pin")
       channels = [x for x in rest if x not in ("-y",)]
       flags = [x for x in rest if x == "-y"]
       if not channels:
-        warnings.warn(
-          f"No channel specified for conda package '{pkg}', defaulting to 'default'."
-        )
+        warnings.warn(f"No channel specified for conda package '{pkg}'")
         channels = ["default"]
       channel_flags = []
       for ch in channels:
@@ -93,13 +84,54 @@ class InstallParser:
         i += 1
 
     if not pkg_spec:
-      raise ValueError("No package specified for conda install")
-
+      raise ValueError("No conda package specified")
     cmd += flags + channels + [pkg_spec]
     if "-y" not in flags:
       cmd.append("-y")
-
     return " ".join(cmd)
+
+  def _prefix_unknown(self, raw):
+    if not raw.strip():
+      return ""
+
+    head = raw.split()[0]
+
+    native = {
+      "apt",
+      "apt-get",
+      "apt-cache",
+      "apt-key",
+      "curl",
+      "wget",
+      "ls",
+      "cd",
+      "cat",
+      "echo",
+      "touch",
+      "mkdir",
+      "rm",
+      "cp",
+      "mv",
+      "bash",
+      "sh",
+      "sudo",
+      "python",
+      "python3",
+      "pip",
+      "conda",
+      "from",
+      "workdir",
+      "copy",
+      "maintainer",
+    }
+
+    if head.lower() in native:
+      return raw
+
+    conda_prefix = eval_conda_prefix()
+    env = self.conda_env_name or "base"
+    env_bin = f"{conda_prefix}/envs/{env}/bin" if conda_prefix else ""
+    return f"{env_bin}/{raw}" if env_bin else raw
 
   def _convert_commands_to_bash_script(self):
     commands = self._get_commands()
@@ -114,43 +146,21 @@ class InstallParser:
         lines.append(f"source {conda_prefix}/etc/profile.d/conda.sh")
       lines.append(f"conda activate {env}")
 
-    APT_COMMANDS = ("apt", "apt-get", "apt-cache", "apt-key")
-
     for cmd in commands:
       if isinstance(cmd, list):
-        head = cmd[0]
+        head = cmd[0].lower()
 
         if head == "pip":
           bash = f"{python_exe} -m {self._convert_pip_entry_to_bash(cmd)}"
-
         elif head == "conda":
           bash = self._convert_conda_entry_to_bash(cmd)
-
-        elif head.upper() == "RUN":
-          if len(cmd) < 2:
-            raise ValueError("RUN entry must include a command")
-          bash = " ".join(cmd[1:])
-
-        elif head in APT_COMMANDS:
-          bash = " ".join(cmd)
-
         else:
-          raise ValueError(f"Unknown command type: {cmd[0]}")
+          raw = " ".join(cmd)
+          bash = self._prefix_unknown(raw)
 
       else:
         s = str(cmd).lstrip()
-
-        if s.upper().startswith("RUN "):
-          bash = s[4:]
-
-        else:
-          head = s.split()[0]
-
-          if head in APT_COMMANDS:
-            bash = s
-
-          else:
-            bash = s
+        bash = self._prefix_unknown(s)
 
       lines.append(bash)
 
