@@ -648,11 +648,31 @@ def get_cached_or_compute(
 ):
   hash_key = f"cache:{model_id}"
 
+  def _field(x):
+    return x.get("input") if isinstance(x, dict) and "input" in x else x
+
+  def _loads(v):
+    if isinstance(v, (bytes, bytearray)):
+      v = v.decode("utf-8")
+    return json.loads(v)
+
+  n = len(data)
+  logging.info(
+    "cache=%s model_id=%s n=%s fetch_cache=%s save_cache=%s cache_only=%s task_type=%s",
+    hash_key,
+    model_id,
+    n,
+    fetch_cache,
+    save_cache,
+    cache_only,
+    task_type,
+  )
+
   if cache_only:
-    fields = [
-      item.get("input") if isinstance(item, dict) and "input" in item else item
-      for item in data
-    ]
+    fields = [_field(item) for item in data]
+    logging.info(
+      "cache_only hmget start model_id=%s n_fields=%s", model_id, len(fields)
+    )
 
     if fetch_cache:
       try:
@@ -663,29 +683,58 @@ def get_cached_or_compute(
     else:
       raw = [None] * len(fields)
 
+    hits = sum(1 for v in raw if v)
+    misses = len(raw) - hits
+    logging.info(
+      "cache_only hmget done model_id=%s hits=%s misses=%s", model_id, hits, misses
+    )
+
     header = fetch_or_cache_header(model_id)
     if header is None:
       header, _ = load_csv_data(generic_example_output_file)
+      logging.info(
+        "cache_only header fallback to generic example model_id=%s header_len=%s",
+        model_id,
+        len(header),
+      )
+    else:
+      logging.info(
+        "cache_only header loaded from cache model_id=%s header_len=%s",
+        model_id,
+        len(header),
+      )
 
     results = []
+    parse_fail = 0
     for val in raw:
       if val:
         try:
-          results.append(json.loads(val))
+          results.append(_loads(val))
         except Exception:
+          parse_fail += 1
           results.append([None] * len(header))
       else:
         results.append([None] * len(header))
+
+    if parse_fail:
+      logging.warning(
+        "cache_only json parse failures model_id=%s count=%s", model_id, parse_fail
+      )
+
     return results, header
 
-  if is_model_variable(metadata) or not init_redis():
+  if is_model_variable(metadata):
+    logging.info("bypass cache: model is variable model_id=%s", model_id)
     inputs = extract_input(data)
     return compute_results(inputs, tag, max_workers, min_workers, metadata, task_type)
 
-  fields = [
-    item.get("input") if isinstance(item, dict) and "input" in item else item
-    for item in data
-  ]
+  if not init_redis():
+    logging.warning("bypass cache: init_redis failed model_id=%s", model_id)
+    inputs = extract_input(data)
+    return compute_results(inputs, tag, max_workers, min_workers, metadata, task_type)
+
+  fields = [_field(item) for item in data]
+  logging.info("hmget start model_id=%s n_fields=%s", model_id, len(fields))
 
   if fetch_cache:
     try:
@@ -696,30 +745,89 @@ def get_cached_or_compute(
   else:
     raw = [None] * len(fields)
 
-  results = []
-  missing = []
-  for item, val in zip(data, raw):
+  hits = sum(1 for v in raw if v)
+  misses = len(raw) - hits
+  logging.info(
+    "hmget done model_id=%s hits=%s misses=%s hit_rate=%.3f",
+    model_id,
+    hits,
+    misses,
+    (hits / len(raw) if raw else 0.0),
+  )
+
+  results = [None] * len(data)
+  missing_idx = []
+  missing_items = []
+  parse_fail = 0
+
+  for i, (item, val) in enumerate(zip(data, raw)):
     if val:
       try:
-        results.append(json.loads(val))
+        results[i] = _loads(val)
       except Exception:
-        results.append([None] * len(header))
+        parse_fail += 1
+        results[i] = None
+        missing_idx.append(i)
+        missing_items.append(item)
     else:
-      missing.append(item)
+      missing_idx.append(i)
+      missing_items.append(item)
+
+  if parse_fail:
+    logging.warning(
+      "cached json parse failures treated as misses model_id=%s count=%s",
+      model_id,
+      parse_fail,
+    )
 
   computed_headers = None
-  if missing:
-    inputs = extract_input(missing)
+  if missing_items:
+    logging.info("compute start model_id=%s missing=%s", model_id, len(missing_items))
+
+    inputs = extract_input(missing_items)
     computed_results, computed_headers = compute_results(
       inputs, tag, max_workers, min_workers, metadata, task_type
     )
-    results.extend(computed_results)
+
+    cr = len(computed_results) if computed_results is not None else 0
+    mh = len(missing_items)
+    if cr != mh:
+      logging.warning(
+        "compute length mismatch model_id=%s computed=%s missing=%s", model_id, cr, mh
+      )
+    else:
+      logging.info("compute done model_id=%s computed=%s", model_id, cr)
+
+    for i, r in zip(missing_idx, computed_results):
+      results[i] = r
 
     if save_cache:
-      cache_missing_results(model_id, missing, computed_results)
+      logging.info("cache save start model_id=%s n=%s", model_id, len(missing_items))
+      cache_missing_results(model_id, missing_items, computed_results)
+      logging.info("cache save done model_id=%s n=%s", model_id, len(missing_items))
+    else:
+      logging.info("cache save skipped model_id=%s", model_id)
+  else:
+    logging.info("no missing; compute skipped model_id=%s", model_id)
 
   header = fetch_or_cache_header(model_id, computed_headers)
   if header is None:
     header, _ = load_csv_data(generic_example_output_file)
+    logging.info(
+      "header fallback to generic example model_id=%s header_len=%s",
+      model_id,
+      len(header),
+    )
+  else:
+    logging.info("header resolved model_id=%s header_len=%s", model_id, len(header))
+
+  none_results = sum(1 for r in results if r is None)
+  if none_results:
+    logging.warning(
+      "results contain None model_id=%s none_count=%s total=%s",
+      model_id,
+      none_results,
+      len(results),
+    )
 
   return results, header
