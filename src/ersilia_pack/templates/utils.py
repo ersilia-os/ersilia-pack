@@ -678,8 +678,10 @@ def get_cached_or_compute(
       try:
         raw = redis_client.hmget(hash_key, fields)
       except Exception as e:
-        logging.warning("Redis hmget in cache_only failed: %s", e)
-        raw = [None] * len(fields)
+        logging.exception("Redis hmget in cache_only failed model_id=%s", model_id)
+        raise RuntimeError(
+          f"Redis hmget failed (cache_only) for model_id={model_id}"
+        ) from e
     else:
       raw = [None] * len(fields)
 
@@ -693,15 +695,11 @@ def get_cached_or_compute(
     if header is None:
       header, _ = load_csv_data(generic_example_output_file)
       logging.info(
-        "cache_only header fallback to generic example model_id=%s header_len=%s",
-        model_id,
-        len(header),
+        "cache_only header fallback model_id=%s header_len=%s", model_id, len(header)
       )
     else:
       logging.info(
-        "cache_only header loaded from cache model_id=%s header_len=%s",
-        model_id,
-        len(header),
+        "cache_only header loaded model_id=%s header_len=%s", model_id, len(header)
       )
 
     results = []
@@ -717,8 +715,11 @@ def get_cached_or_compute(
         results.append([None] * len(header))
 
     if parse_fail:
-      logging.warning(
+      logging.error(
         "cache_only json parse failures model_id=%s count=%s", model_id, parse_fail
+      )
+      raise RuntimeError(
+        f"Redis cached payload JSON decode failed (cache_only) for model_id={model_id}, count={parse_fail}"
       )
 
     return results, header
@@ -729,9 +730,8 @@ def get_cached_or_compute(
     return compute_results(inputs, tag, max_workers, min_workers, metadata, task_type)
 
   if not init_redis():
-    logging.warning("bypass cache: init_redis failed model_id=%s", model_id)
-    inputs = extract_input(data)
-    return compute_results(inputs, tag, max_workers, min_workers, metadata, task_type)
+    logging.error("init_redis failed model_id=%s", model_id)
+    raise RuntimeError(f"init_redis failed for model_id={model_id}")
 
   fields = [_field(item) for item in data]
   logging.info("hmget start model_id=%s n_fields=%s", model_id, len(fields))
@@ -740,8 +740,8 @@ def get_cached_or_compute(
     try:
       raw = redis_client.hmget(hash_key, fields)
     except Exception as e:
-      logging.warning("Redis hmget failed: %s", e)
-      raw = [None] * len(fields)
+      logging.exception("Redis hmget failed model_id=%s", model_id)
+      raise RuntimeError(f"Redis hmget failed for model_id={model_id}") from e
   else:
     raw = [None] * len(fields)
 
@@ -774,10 +774,13 @@ def get_cached_or_compute(
       missing_items.append(item)
 
   if parse_fail:
-    logging.warning(
+    logging.error(
       "cached json parse failures treated as misses model_id=%s count=%s",
       model_id,
       parse_fail,
+    )
+    raise RuntimeError(
+      f"Redis cached payload JSON decode failed for model_id={model_id}, count={parse_fail}"
     )
 
   computed_headers = None
@@ -789,21 +792,35 @@ def get_cached_or_compute(
       inputs, tag, max_workers, min_workers, metadata, task_type
     )
 
-    cr = len(computed_results) if computed_results is not None else 0
-    mh = len(missing_items)
-    if cr != mh:
-      logging.warning(
-        "compute length mismatch model_id=%s computed=%s missing=%s", model_id, cr, mh
+    if computed_results is None:
+      logging.error("compute_results returned None model_id=%s", model_id)
+      raise RuntimeError(f"compute_results returned None for model_id={model_id}")
+
+    if len(computed_results) != len(missing_items):
+      logging.error(
+        "compute length mismatch model_id=%s computed=%s missing=%s",
+        model_id,
+        len(computed_results),
+        len(missing_items),
       )
-    else:
-      logging.info("compute done model_id=%s computed=%s", model_id, cr)
+      raise RuntimeError(
+        f"compute_results length mismatch for model_id={model_id}: computed={len(computed_results)} missing={len(missing_items)}"
+      )
+
+    logging.info(
+      "compute done model_id=%s computed=%s", model_id, len(computed_results)
+    )
 
     for i, r in zip(missing_idx, computed_results):
       results[i] = r
 
     if save_cache:
       logging.info("cache save start model_id=%s n=%s", model_id, len(missing_items))
-      cache_missing_results(model_id, missing_items, computed_results)
+      try:
+        cache_missing_results(model_id, missing_items, computed_results)
+      except Exception as e:
+        logging.exception("cache save failed model_id=%s", model_id)
+        raise RuntimeError(f"cache save failed for model_id={model_id}") from e
       logging.info("cache save done model_id=%s n=%s", model_id, len(missing_items))
     else:
       logging.info("cache save skipped model_id=%s", model_id)
@@ -813,21 +830,20 @@ def get_cached_or_compute(
   header = fetch_or_cache_header(model_id, computed_headers)
   if header is None:
     header, _ = load_csv_data(generic_example_output_file)
-    logging.info(
-      "header fallback to generic example model_id=%s header_len=%s",
-      model_id,
-      len(header),
-    )
+    logging.info("header fallback model_id=%s header_len=%s", model_id, len(header))
   else:
     logging.info("header resolved model_id=%s header_len=%s", model_id, len(header))
 
   none_results = sum(1 for r in results if r is None)
   if none_results:
-    logging.warning(
+    logging.error(
       "results contain None model_id=%s none_count=%s total=%s",
       model_id,
       none_results,
       len(results),
+    )
+    raise RuntimeError(
+      f"results contain None for model_id={model_id}: none_count={none_results} total={len(results)}"
     )
 
   return results, header
