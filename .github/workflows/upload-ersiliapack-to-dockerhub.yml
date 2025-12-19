@@ -103,8 +103,11 @@ jobs:
           conda clean -a -y || true
           pip cache purge || true
           df -h
-          docker run -p 6379:6379 --name redis-test -d redis:latest
 
+      - name: Setting up Redis
+        run: |
+          docker run -p 6379:6379 --name redis-test -d redis:latest
+          
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
