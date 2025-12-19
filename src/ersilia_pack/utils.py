@@ -1,5 +1,38 @@
-import datetime, logging, os, socket, subprocess, shlex
+import datetime, logging, os, socket, subprocess, shlex, sys
 from collections import namedtuple
+
+RESET = "\033[0m"
+COLORS = {
+  logging.DEBUG: "\033[90m",
+  logging.INFO: "\033[36m",
+  logging.WARNING: "\033[33m",
+  logging.ERROR: "\033[31m",
+  logging.CRITICAL: "\033[1;31m",
+}
+
+
+class ColorFormatter(logging.Formatter):
+  def format(self, record):
+    color = COLORS.get(record.levelno, "")
+    fmt = f"{color}%(message)s{RESET}"
+    formatter = logging.Formatter(fmt)
+    return formatter.format(record)
+
+
+def get_logger(name=None, level=logging.INFO):
+  logger = logging.getLogger(name if name is not None else __name__)
+
+  if not logger.handlers:
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(ColorFormatter())
+    logger.addHandler(handler)
+
+  logger.setLevel(level)
+  logger.propagate = False
+  return logger
+
+
+logger = get_logger()
 
 
 def find_free_port(host="localhost"):
@@ -34,21 +67,19 @@ def run_command(cmd, quiet=None):
   stdout_lines = []
   stderr_lines = []
 
-  print(f"[{start.strftime('%Y-%m-%d %H:%M:%S')}] $ {display_cmd}")
+  logger.info(f"$ {display_cmd}")
 
   for line in proc.stdout:
     line = line.rstrip("\n")
     stdout_lines.append(line)
-    print(line)
     if not quiet:
       logger.info(line)
 
   for line in proc.stderr:
     line = line.rstrip("\n")
     stderr_lines.append(line)
-    print(line)
     if not quiet:
-      logger.info(line)
+      logger.error(line)
 
   proc.wait()
   end = datetime.datetime.now()
@@ -63,29 +94,12 @@ def run_command(cmd, quiet=None):
     stderr=stderr_str,
   )
 
-  print(
-    "\n".join([
-      f"returncode: {proc.returncode}",
-      f"duration: {(end - start).total_seconds():.3f}s",
-      "-" * 40,
-    ])
-  )
+  logger.info(f"returncode: {proc.returncode}")
+  logger.info(f"duration: {(end - start).total_seconds():.3f}s")
+  logger.info("-" * 40)
 
   return output
 
 
-def get_logger():
-  logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-  )
-  logger = logging.getLogger(__name__)
-  return logger
-
-
 def eval_conda_prefix():
-  # This returns an empty string if conda is not discoverable
   return os.popen("conda info --base").read().strip()
-
-
-logger = get_logger()

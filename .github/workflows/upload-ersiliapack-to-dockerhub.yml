@@ -55,24 +55,47 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - py: "3.10"
+            model: eos3b5e
+            port: 14434
+            fetch_cache: "False"
+            save_cache: "False"
+            cache_only: "False"
           - py: "3.8"
             model: eos43at
             port: 14463
+            fetch_cache: "False"
+            save_cache: "False"
+            cache_only: "False"
           - py: "3.9"
             model: eos6oli
             port: 14567
+            fetch_cache: "False"
+            save_cache: "False"
+            cache_only: "False"
           - py: "3.10"
             model: eos3b5e
             port: 14466
+            fetch_cache: "True"
+            save_cache: "False"
+            cache_only: "False"
           - py: "3.11"
             model: eos5guo
             port: 17467
+            fetch_cache: "False"
+            save_cache: "False"
+            cache_only: "False"
           - py: "3.12"
             model: eos6ojg
             port: 13468
+            fetch_cache: "False"
+            save_cache: "False"
+            cache_only: "False"
+
     defaults:
       run:
         shell: bash -el {0}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -83,24 +106,24 @@ jobs:
           conda clean -a -y || true
           pip cache purge || true
           df -h
+          docker run -p 6379:6379 --name redis-test -d redis:latest
 
-      - uses: conda-incubator/setup-miniconda@v3
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          auto-update-conda: true
           python-version: ${{ matrix.py }}
 
-      - name: Install deps
+      - name: Run nox ci
+        env:
+          MODEL_ID: ${{ matrix.model }}
+          PORT: ${{ matrix.port }}
+          FETCH_CACHE: ${{ matrix.fetch_cache }}
+          SAVE_CACHE: ${{ matrix.save_cache }}
+          CACHE_ONLY: ${{ matrix.cache_only }}
+          USE_PARAL: ${{ matrix.use_paral }}
         run: |
-          conda install -y -c conda-forge git-lfs gh
-          git-lfs install
-          pip install -e .
-          pip install nox requests
-
-      - name: Run nox
-        run: |
-          set -e
-          nox -f tests/nox/noxfile.py -s ci-${{ matrix.py }} -- \
-            ${{ matrix.model }} ${{ matrix.port }} ${{ matrix.model }}
+          echo "==> py=${{ matrix.py }} model=${MODEL_ID} port=${PORT} fetch_cache=${FETCH_CACHE} save_cache=${SAVE_CACHE} cache_only=${CACHE_ONLY} use_paral=${USE_PARAL}"
+          nox -s ci --python ${{ matrix.py }}
 
       - name: Cleanup
         if: always()

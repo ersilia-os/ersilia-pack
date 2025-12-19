@@ -3,7 +3,6 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from redis import Redis
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-
 from .default import (
   ENVIRONMENT,
   DEFAULT_REDIS_URI,
@@ -27,7 +26,6 @@ from .default import (
   generic_example_output_file,
   cprint,
 )
-
 
 CHUNK_MULTIPLIER = 4
 
