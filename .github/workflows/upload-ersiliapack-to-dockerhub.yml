@@ -54,6 +54,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        include:
           - py: "3.8"
             model: eos43at
             port: 14463
@@ -84,6 +85,7 @@ jobs:
             fetch_cache: "False"
             save_cache: "False"
             cache_only: "False"
+
     defaults:
       run:
         shell: bash -el {0}
@@ -119,12 +121,11 @@ jobs:
           nox -s ci --python 3.10 -- eos3b5e 14434 eos3b5e True False False
           nox -s ci --python 3.10 -- eos3b5e 14433 eos3b5e False True True
 
-
       - name: Run nox
         run: |
           set -e
           nox -f tests/nox/noxfile.py -s i-${{ matrix.py }} -- \
-            ${{ matrix.model }} ${{ matrix.port }} ${{ matrix.model }
+            ${{ matrix.model }} ${{ matrix.port }} ${{ matrix.model }}
 
       - name: Cleanup
         if: always()
