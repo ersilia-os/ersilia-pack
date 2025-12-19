@@ -51,6 +51,13 @@ jobs:
   test-pipeline:
     runs-on: ubuntu-latest
     needs: run-pytest
+
+    env:
+      FETCH_CACHE: "False"
+      SAVE_CACHE: "False"
+      CACHE_ONLY: "False"
+      USE_PARAL: "False"
+
     strategy:
       fail-fast: false
       matrix:
@@ -58,39 +65,29 @@ jobs:
           - py: "3.10"
             model: eos3b5e
             port: 14434
-            fetch_cache: "False"
-            save_cache: "False"
-            cache_only: "False"
+            save_cache: "True"
+
+          - py: "3.10"
+            model: eos3b5e
+            port: 14435
+            fetch_cache: "True"
+            cache_only: "True"
+
           - py: "3.8"
             model: eos43at
             port: 14463
-            fetch_cache: "False"
-            save_cache: "False"
-            cache_only: "False"
           - py: "3.9"
             model: eos6oli
             port: 14567
-            fetch_cache: "False"
-            save_cache: "False"
-            cache_only: "False"
           - py: "3.10"
             model: eos3b5e
             port: 14466
-            fetch_cache: "True"
-            save_cache: "False"
-            cache_only: "False"
           - py: "3.11"
             model: eos5guo
             port: 17467
-            fetch_cache: "False"
-            save_cache: "False"
-            cache_only: "False"
           - py: "3.12"
             model: eos6ojg
             port: 13468
-            fetch_cache: "False"
-            save_cache: "False"
-            cache_only: "False"
 
     defaults:
       run:
@@ -115,12 +112,12 @@ jobs:
 
       - name: Run nox ci
         env:
-          MODEL_ID: ${{ matrix.model }}
-          PORT: ${{ matrix.port }}
-          FETCH_CACHE: ${{ matrix.fetch_cache }}
-          SAVE_CACHE: ${{ matrix.save_cache }}
-          CACHE_ONLY: ${{ matrix.cache_only }}
-          USE_PARAL: ${{ matrix.use_paral }}
+          MODEL_ID:   ${{ matrix.model }}
+          PORT:       ${{ matrix.port }}
+          FETCH_CACHE: ${{ matrix.fetch_cache || env.FETCH_CACHE }}
+          SAVE_CACHE:  ${{ matrix.save_cache  || env.SAVE_CACHE }}
+          CACHE_ONLY:  ${{ matrix.cache_only  || env.CACHE_ONLY }}
+          USE_PARAL:   ${{ matrix.use_paral   || env.USE_PARAL }}
         run: |
           echo "==> py=${{ matrix.py }} model=${MODEL_ID} port=${PORT} fetch_cache=${FETCH_CACHE} save_cache=${SAVE_CACHE} cache_only=${CACHE_ONLY} use_paral=${USE_PARAL}"
           nox -s ci --python ${{ matrix.py }}

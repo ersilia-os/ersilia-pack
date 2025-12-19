@@ -55,10 +55,10 @@ def ci(s):
   model = s.posargs[0] if len(s.posargs) >= 1 else os.getenv("MODEL_ID", "eos3b5e")
   port = int(s.posargs[1]) if len(s.posargs) >= 2 else os.getenv("PORT", 8000)
   envname = s.posargs[2] if len(s.posargs) >= 3 else os.getenv("ENV_NAME", model)
-  save_cache = s.posargs[3] if len(s.posargs) >= 4 else os.getenv("SAVE_CACHE", False)
-  fetch_cache = s.posargs[4] if len(s.posargs) >= 5 else os.getenv("FETCH_CACHE", False)
+  save_cache = s.posargs[3] if len(s.posargs) >= 4 else bool(os.getenv("SAVE_CACHE", False))
+  fetch_cache = s.posargs[4] if len(s.posargs) >= 5 else bool(os.getenv("FETCH_CACHE", False))
   cache_only = (
-    s.posargs[5] if len(s.posargs) >= 5 else  os.getenv("CACHE_ONLY", False)
+    s.posargs[5] if len(s.posargs) >= 6 else  bool(os.getenv("CACHE_ONLY", False))
   ) 
   model_path = PLAY / model
   example_path = PLAY / model / "model" / "framework" / "examples"
