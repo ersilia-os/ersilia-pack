@@ -1,4 +1,4 @@
-import os, tempfile, traceback, uuid
+import logging, os, tempfile, traceback, sys, uuid
 from datetime import datetime
 from fastapi.responses import JSONResponse
 from typing import List
@@ -232,3 +232,37 @@ def colored(
 
 def cprint(text, **kwargs):
   print(colored(text, **kwargs))
+
+
+RESET = "\033[0m"
+COLORS = {
+  logging.DEBUG: "\033[90m",
+  logging.INFO: "\033[36m",
+  logging.WARNING: "\033[33m",
+  logging.ERROR: "\033[31m",
+  logging.CRITICAL: "\033[1;31m",
+}
+
+
+class ColorFormatter(logging.Formatter):
+  def format(self, record):
+    color = COLORS.get(record.levelno, "")
+    fmt = f"{color}%(message)s{RESET}"
+    formatter = logging.Formatter(fmt)
+    return formatter.format(record)
+
+
+def get_logger(name=None, level=logging.INFO):
+  logger = logging.getLogger(name if name is not None else __name__)
+
+  if not logger.handlers:
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(ColorFormatter())
+    logger.addHandler(handler)
+
+  logger.setLevel(level)
+  logger.propagate = False
+  return logger
+
+
+logger = get_logger()

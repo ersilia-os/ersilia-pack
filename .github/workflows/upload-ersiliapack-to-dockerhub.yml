@@ -70,9 +70,11 @@ jobs:
           - py: "3.12"
             model: eos6ojg
             port: 13468
+
     defaults:
       run:
         shell: bash -el {0}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -95,6 +97,17 @@ jobs:
           git-lfs install
           pip install -e .
           pip install nox requests
+
+      - name: Setup and run redis (cache tests)
+        if: matrix.py == '3.10' && matrix.model == 'eos3b5e'
+        run: |
+          docker run -p 6379:6379 --name redis-test -d redis:latest
+
+      - name: Running redis cache and multiprocessing test
+        if: matrix.py == '3.10' && matrix.model == 'eos3b5e'
+        run: |
+          nox -f tests/nox/noxfile.py -s ci --python 3.10 -- eos3b5e 14434 eos3b5e True False False
+          nox -f tests/nox/noxfile.py -s ci --python 3.10 -- eos3b5e 14433 eos3b5e False True True
 
       - name: Run nox
         run: |
@@ -194,4 +207,3 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ matrix.tag }}:latest
-

@@ -17,27 +17,70 @@ from utils import (
 ROOT = Path.home() / "eos"
 PLAY = ROOT / "erp_playground"
 PLAY.mkdir(parents=True, exist_ok=True)
-PWD = Path(__file__).resolve().parent.parent.parent
+PWD = Path(__file__).resolve().parent.parent
 nox.options.envdir = str(PLAY / ".nox")
+
+
+def infer(ip, op, base, fetch_cache, cache_only, save_cache):
+  data = read_values(ip)
+  data = [d[0] for d in data]
+  body = http(
+    f"{base}/run?fetch_cache={fetch_cache}&cache_only={cache_only}&save_cache={save_cache}",
+    data,
+  )
+  act_res = read_values(op)
+  act_res = [[float(v) for v in vs] for vs in act_res]
+  return data, act_res, body
+
+
+def validate(s, log, act_res, pid, body):
+  try:
+    exp_res = json.loads(body)
+    exp_res = [list(e.values()) for e in exp_res]
+    exp_res = [[float(v) for v in vs] for vs in exp_res]
+    if not match(act_res, exp_res):
+      raise RuntimeError("Result did not match")
+
+  except Exception as e:
+    s.error(e)
+    txt = log.read_text() if log.exists() else ""
+    srv_kill(s, pid)
+    s.error(f"/run non-json\n{body}\n{txt}")
 
 
 @nox.session(
   venv_backend="conda", python=["3.8", "3.9", "3.10", "3.11", "3.12"], reuse_venv=True
 )
 def ci(s):
-  model = s.posargs[0] if len(s.posargs) >= 1 else "eos3b5e"
-  port = int(s.posargs[1]) if len(s.posargs) >= 2 else 8000
-  envname = s.posargs[3] if len(s.posargs) >= 4 else model
+  model = s.posargs[0] if len(s.posargs) >= 1 else os.getenv("MODEL_ID", "eos3b5e")
+  port = int(s.posargs[1]) if len(s.posargs) >= 2 else os.getenv("PORT", 8000)
+  envname = s.posargs[2] if len(s.posargs) >= 3 else os.getenv("ENV_NAME", model)
+  save_cache = s.posargs[3] if len(s.posargs) >= 4 else bool(os.getenv("SAVE_CACHE", False))
+  fetch_cache = s.posargs[4] if len(s.posargs) >= 5 else bool(os.getenv("FETCH_CACHE", False))
+  cache_only = (
+    s.posargs[5] if len(s.posargs) >= 6 else  bool(os.getenv("CACHE_ONLY", False))
+  ) 
   model_path = PLAY / model
   example_path = PLAY / model / "model" / "framework" / "examples"
-  input_path = example_path / "run_input.csv"
-  output_path = example_path / "run_output.csv"
+  example_input_path = example_path / "run_input.csv"
+  large_input_path = PWD / "data" / "input.csv"
+  large_output_path = PWD / "data" / "output_bash.csv"
+  example_output_path = example_path / "run_output.csv"
+  output_path = large_output_path if (fetch_cache or save_cache) else example_output_path
+  input_path = large_input_path if (fetch_cache or save_cache)  else example_input_path
   log = Path(f"{model_path}-serve.log")
   pidf = Path(f"{model_path}.pid")
   repo = ROOT / "repository"
   bundle = repo / model
   base = f"http://127.0.0.1:{port}"
 
+  s.log(
+    f"ci resolved args: "
+    f"model={model}, port={port}, envname={envname}, "
+    f"save_cache={save_cache}, fetch_cache={fetch_cache}, cache_only={cache_only}, "
+    f"input_path={input_path}, output_path={output_path}"
+  )
+  
   tools(s)
 
   b = Path(sys.executable).parent
@@ -92,24 +135,10 @@ def ci(s):
   else:
     print(f"ready via {ep}")
 
-  data = read_values(input_path)
-  data = [d[0] for d in data]
-  body = http(f"{base}/run", data)
-  act_res = read_values(output_path)
-  act_res = [[float(v) for v in vs] for vs in act_res]
-  
-  try:
-    exp_res = json.loads(body)
-    exp_res = [list(e.values()) for e in exp_res]
-    exp_res = [[float(v) for v in vs] for vs in exp_res]
-    if not match(act_res, exp_res):
-      raise RuntimeError("Result did not match")
-
-  except Exception as e:
-    s.error(e)
-    txt = log.read_text() if log.exists() else ""
-    srv_kill(s, pid)
-    s.error(f"/run non-json\n{body}\n{txt}")
+  data, act_res, body = infer(
+    input_path, output_path, base, fetch_cache, cache_only, save_cache
+  )
+  validate(s, log, act_res, pid, body)
 
   interval = int(os.environ.get("JOB_POLL_INTERVAL", "2"))
   timeout = int(os.environ.get("JOB_POLL_TIMEOUT", "120"))
