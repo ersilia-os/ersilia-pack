@@ -58,37 +58,23 @@ jobs:
           - py: "3.8"
             model: eos43at
             port: 14463
-            fetch_cache: "False"
-            save_cache: "False"
-            cache_only: "False"
           - py: "3.9"
             model: eos6oli
             port: 14567
-            fetch_cache: "False"
-            save_cache: "False"
-            cache_only: "False"
           - py: "3.10"
             model: eos3b5e
             port: 14466
-            fetch_cache: "False"
-            save_cache: "False"
-            cache_only: "False"
           - py: "3.11"
             model: eos5guo
             port: 17467
-            fetch_cache: "False"
-            save_cache: "False"
-            cache_only: "False"
           - py: "3.12"
             model: eos6ojg
             port: 13468
-            fetch_cache: "False"
-            save_cache: "False"
-            cache_only: "False"
 
     defaults:
       run:
         shell: bash -el {0}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -112,11 +98,13 @@ jobs:
           pip install -e .
           pip install nox requests
 
-      - name: Setup and running redis
+      - name: Setup and run redis (cache tests)
+        if: matrix.py == '3.10' && matrix.model == 'eos3b5e'
         run: |
-          docker run -p 6379:6379 --name redis-test -d redis:latest  
+          docker run -p 6379:6379 --name redis-test -d redis:latest
 
       - name: Running redis cache and multiprocessing test
+        if: matrix.py == '3.10' && matrix.model == 'eos3b5e'
         run: |
           nox -s ci --python 3.10 -- eos3b5e 14434 eos3b5e True False False
           nox -s ci --python 3.10 -- eos3b5e 14433 eos3b5e False True True
