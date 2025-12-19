@@ -54,19 +54,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - py: "3.10"
-            model: eos3b5e
-            port: 14434
-            fetch_cache: "False"
-            save_cache: "True"
-            cache_only: "False"
-          - py: "3.10"
-            model: eos3b5e
-            port: 14433
-            fetch_cache: "True"
-            save_cache: "False"
-            cache_only: "True"
           - py: "3.8"
             model: eos43at
             port: 14463
@@ -117,7 +104,7 @@ jobs:
           python-version: ${{ matrix.py }}
 
       - name: Install deps
-        run: |
+        run: |c
           conda install -y -c conda-forge git-lfs gh
           git-lfs install
           pip install -e .
@@ -127,11 +114,17 @@ jobs:
         run: |
           docker run -p 6379:6379 --name redis-test -d redis:latest  
 
+      - name: Running redis cache and multiprocessing test
+        run: |
+          nox -s ci --python 3.10 -- eos3b5e 14434 eos3b5e True False False
+          nox -s ci --python 3.10 -- eos3b5e 14433 eos3b5e False True True
+
+
       - name: Run nox
         run: |
           set -e
-          nox -f tests/nox/noxfile.py -s ci-${{ matrix.py }} -- \
-            ${{ matrix.model }} ${{ matrix.port }} ${{ matrix.model }} ${{ matrix.save_cache }} ${{ matrix.fetch_cache }} ${{ matrix.cache_only }}
+          nox -f tests/nox/noxfile.py -s i-${{ matrix.py }} -- \
+            ${{ matrix.model }} ${{ matrix.port }} ${{ matrix.model }
 
       - name: Cleanup
         if: always()
