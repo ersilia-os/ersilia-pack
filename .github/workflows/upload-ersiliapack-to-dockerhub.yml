@@ -112,7 +112,7 @@ jobs:
       - name: Run nox
         run: |
           set -e
-          nox -f tests/nox/noxfile.py -s i-${{ matrix.py }} -- \
+          nox -f tests/nox/noxfile.py -s ci-${{ matrix.py }} -- \
             ${{ matrix.model }} ${{ matrix.port }} ${{ matrix.model }}
 
       - name: Cleanup
