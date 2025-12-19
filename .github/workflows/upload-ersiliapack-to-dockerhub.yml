@@ -112,6 +112,7 @@ jobs:
 
       - name: Run nox ci
         run: |
+          python -m pip install nox
           echo "==> py=${{ matrix.py }} model=${{ matrix.model }} port=${{ matrix.port }} save_cache=${{ matrix.save_cache || 'False' }} fetch_cache=${{ matrix.fetch_cache || 'False' }} cache_only=${{ matrix.cache_only || 'False' }}"
           nox -f tests/nox/noxfile.py -s ci --python ${{ matrix.py }} -- \
             ${{ matrix.model }} \
