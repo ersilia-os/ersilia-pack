@@ -121,7 +121,7 @@ jobs:
         run: |
           python -m pip install nox
           echo "==> py=${{ matrix.py }} model=${MODEL_ID} port=${PORT} fetch_cache=${FETCH_CACHE} save_cache=${SAVE_CACHE} cache_only=${CACHE_ONLY} use_paral=${USE_PARAL}"
-          nox -s ci --python ${{ matrix.py }}
+          nox -f tests/nox/noxfile.py -s ci --python ${{ matrix.py }}
 
       - name: Cleanup
         if: always()
