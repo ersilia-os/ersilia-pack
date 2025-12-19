@@ -59,8 +59,14 @@ jobs:
             model: eos3b5e
             port: 14434
             fetch_cache: "False"
-            save_cache: "False"
+            save_cache: "True"
             cache_only: "False"
+          - py: "3.10"
+            model: eos3b5e
+            port: 14433
+            fetch_cache: "True"
+            save_cache: "False"
+            cache_only: "True"
           - py: "3.8"
             model: eos43at
             port: 14463
@@ -76,7 +82,7 @@ jobs:
           - py: "3.10"
             model: eos3b5e
             port: 14466
-            fetch_cache: "True"
+            fetch_cache: "False"
             save_cache: "False"
             cache_only: "False"
           - py: "3.11"
@@ -120,7 +126,7 @@ jobs:
       - name: Setup and running redis
         run: |
           docker run -p 6379:6379 --name redis-test -d redis:latest  
-          
+
       - name: Run nox
         run: |
           set -e

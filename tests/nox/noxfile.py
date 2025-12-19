@@ -66,14 +66,21 @@ def ci(s):
   large_input_path = PWD / "data" / "input.csv"
   large_output_path = PWD / "data" / "output_bash.csv"
   example_output_path = example_path / "run_output.csv"
-  output_path = large_output_path if fetch_cache else example_output_path
-  input_path = example_input_path if not fetch_cache  else large_input_path
+  output_path = large_output_path if (fetch_cache or save_cache) else example_output_path
+  input_path = large_input_path if (fetch_cache or save_cache)  else example_input_path
   log = Path(f"{model_path}-serve.log")
   pidf = Path(f"{model_path}.pid")
   repo = ROOT / "repository"
   bundle = repo / model
   base = f"http://127.0.0.1:{port}"
 
+  s.log(
+    f"ci resolved args: "
+    f"model={model}, port={port}, envname={envname}, "
+    f"save_cache={save_cache}, fetch_cache={fetch_cache}, cache_only={cache_only}, "
+    f"input_path={input_path}, output_path={output_path}"
+  )
+  
   tools(s)
 
   b = Path(sys.executable).parent
