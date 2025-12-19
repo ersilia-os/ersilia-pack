@@ -104,7 +104,7 @@ jobs:
           python-version: ${{ matrix.py }}
 
       - name: Install deps
-        run: |c
+        run: |
           conda install -y -c conda-forge git-lfs gh
           git-lfs install
           pip install -e .
