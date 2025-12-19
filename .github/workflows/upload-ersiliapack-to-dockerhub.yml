@@ -106,8 +106,8 @@ jobs:
       - name: Running redis cache and multiprocessing test
         if: matrix.py == '3.10' && matrix.model == 'eos3b5e'
         run: |
-          nox -s ci --python 3.10 -- eos3b5e 14434 eos3b5e True False False
-          nox -s ci --python 3.10 -- eos3b5e 14433 eos3b5e False True True
+          nox -f tests/nox/noxfile.py -s ci --python 3.10 -- eos3b5e 14434 eos3b5e True False False
+          nox -f tests/nox/noxfile.py -s ci --python 3.10 -- eos3b5e 14433 eos3b5e False True True
 
       - name: Run nox
         run: |
