@@ -131,7 +131,6 @@ def ci(s):
   data, act_res, body = infer(
     input_path, output_path, base, fetch_cache, cache_only, save_cache
   )
-  # print(body)
   validate(s, log, act_res, pid, body)
 
   interval = int(os.environ.get("JOB_POLL_INTERVAL", "2"))
