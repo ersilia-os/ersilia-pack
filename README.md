@@ -1,14 +1,21 @@
-<p align="center">
-  <img src="assets/logo.png" alt="Ersilia-Pack Logo" width="200"/>
-</p>
+<div align="center">
+<img src="assets/logo.png" alt="Ersilia-Pack Logo" width="400"/>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/License-GNU%20GPLv3-blueviolet?style=for-the-badge" alt="GNU License">
-  <img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python Version">
-  <img src="https://img.shields.io/badge/Code%20Style-black-FFD43B?style=for-the-badge&logo=python" alt="Code Style: Black">
-</p>
+[![License](https://img.shields.io/badge/License-GNU%20GPLv3-7B2CBF?style=flat-square&logo=gnu&logoColor=white)](#license)
+[![Python](https://img.shields.io/badge/Python-%3E%3D3.9-3776AB?style=flat-square&logo=python&logoColor=white)](#)
+[![Redis](https://img.shields.io/badge/Redis-required-DC382D?style=flat-square&logo=redis&logoColor=white)](https://redis.io/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000?style=flat-square&logo=python&logoColor=white)](https://github.com/psf/black)
 
-</p>
+<br/>
+
+[Installation](#installation) ·
+[Usage](#usage) ·
+[Code Quality](#code-quality) ·
+[API Documentation](#api-documentation) ·
+[Output Orientation](#output-orientation) ·
+[For Developers](#for-developers) ·
+[License](#license)
+</div>
 
 # Ersilia-Pack
 
