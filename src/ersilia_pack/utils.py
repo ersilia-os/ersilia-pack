@@ -1,5 +1,6 @@
-import datetime, logging, os, socket, subprocess, shlex, sys
+import datetime, logging, os, socket, subprocess, shlex, shutil, sys
 from collections import namedtuple
+from pathlib import Path
 
 RESET = "\033[0m"
 COLORS = {
@@ -102,4 +103,22 @@ def run_command(cmd, quiet=None):
 
 
 def eval_conda_prefix():
-  return os.popen("conda info --base").read().strip()
+  conda_exe = os.environ.get("CONDA_EXE")
+  if not conda_exe:
+    conda_exe = shutil.which("conda")
+
+  if not conda_exe:
+    env_prefix = os.environ.get("CONDA_PREFIX")
+    if env_prefix:
+      base_candidate = Path(env_prefix).parents[1]  # .../miniconda
+      candidate = base_candidate / "bin" / "conda"
+      if candidate.exists():
+        conda_exe = str(candidate)
+
+  if not conda_exe:
+    return ""
+
+  p = subprocess.run([conda_exe, "info", "--base"], capture_output=True, text=True)
+  if p.returncode != 0:
+    return ""
+  return p.stdout.strip()
