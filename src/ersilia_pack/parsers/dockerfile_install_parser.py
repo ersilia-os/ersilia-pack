@@ -25,39 +25,43 @@ class DockerfileInstallParser(InstallParser):
     raise ValueError("Python version not found")
 
   @staticmethod
-  def _is_flag(tok: str) -> bool:
+  def _is_flag(tok):
     return tok.startswith("-")
 
   @staticmethod
-  def _is_git_spec(tok: str) -> bool:
+  def _is_git_spec(tok):
     return tok.startswith("git+")
 
   @staticmethod
-  def _validate_pip_pkg_spec(tok: str) -> None:
+  def _validate_pip_pkg_spec(tok):
     if DockerfileInstallParser._is_git_spec(tok):
       return
     if "==" not in tok:
-      raise ValueError(f"pip install must pin versions (use '=='): got '{tok}'")
+      raise ValueError(
+        "pip install must pin versions (use '=='): got '{0}'".format(tok)
+      )
     pkg, ver = tok.split("==", 1)
     if not pkg or not ver:
-      raise ValueError(f"Invalid pip pin: '{tok}'")
+      raise ValueError("Invalid pip pin: '{0}'".format(tok))
 
   @staticmethod
-  def _validate_conda_pkg_spec(tok: str) -> None:
+  def _validate_conda_pkg_spec(tok):
     if "=" not in tok:
-      raise ValueError(f"conda install must pin versions (use '='): got '{tok}'")
+      raise ValueError(
+        "conda install must pin versions (use '='): got '{0}'".format(tok)
+      )
     pkg, ver = tok.split("=", 1)
     if pkg.endswith("="):
       pkg = pkg[:-1]
       if ver.startswith("="):
         ver = ver[1:]
     if not pkg or not ver:
-      raise ValueError(f"Invalid conda pin: '{tok}'")
+      raise ValueError("Invalid conda pin: '{0}'".format(tok))
     if not re.match(r"^[A-Za-z0-9._-]+$", pkg):
-      raise ValueError(f"Invalid conda package name: '{pkg}'")
+      raise ValueError("Invalid conda package name: '{0}'".format(pkg))
 
   @staticmethod
-  def _validate_pip_install(parts: list[str]) -> None:
+  def _validate_pip_install(parts):
     if len(parts) < 3:
       raise ValueError("pip install must include at least one package spec")
     i = 2
@@ -79,7 +83,7 @@ class DockerfileInstallParser(InstallParser):
       i += 1
 
   @staticmethod
-  def _validate_conda_install(parts: list[str]) -> None:
+  def _validate_conda_install(parts):
     if len(parts) < 3:
       raise ValueError("conda install must include at least one package spec")
     i = 2
@@ -104,7 +108,7 @@ class DockerfileInstallParser(InstallParser):
       raise ValueError("conda install must include at least one pinned package spec")
 
   @staticmethod
-  def _maybe_validate_install_command(cmd: str) -> None:
+  def _maybe_validate_install_command(cmd):
     parts = shlex.split(cmd)
     if len(parts) >= 2 and parts[0] == "pip" and parts[1] == "install":
       DockerfileInstallParser._validate_pip_install(parts)

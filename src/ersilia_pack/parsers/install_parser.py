@@ -170,6 +170,7 @@ class InstallParser:
     if file_name is None:
       file_name = os.path.splitext(self.file_name)[0] + ".sh"
     data = self._convert_commands_to_bash_script()
+    print(data)
     with open(file_name, "w") as f:
       f.write(data)
 
