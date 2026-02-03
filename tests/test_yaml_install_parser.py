@@ -10,7 +10,7 @@ class TestYamlInstallParser:
     "src.ersilia_pack.parsers.yaml_install_parser.FILE_TYPE",
     "simple_install.yml",
   )
-  def test_simple_install_yaml(self, mock_conda):
+  def test_simple_install_yaml(self):
     parser = YAMLInstallParser(file_dir="tests/data")
     assert parser._get_python_version() == "3.10"
 
@@ -29,7 +29,7 @@ class TestYamlInstallParser:
     "src.ersilia_pack.parsers.yaml_install_parser.FILE_TYPE",
     "complex_install.yml",
   )
-  def test_complex_install_yaml(self, mock_conda):
+  def test_complex_install_yaml(self):
     parser = YAMLInstallParser(file_dir="tests/data")
     assert parser._get_python_version() == "3.10"
 
@@ -60,7 +60,7 @@ class TestYamlInstallParser:
     "src.ersilia_pack.parsers.yaml_install_parser.FILE_TYPE",
     "invalid_install.yml",
   )
-  def test_invalid_install_yaml(self, mock_conda):
+  def test_invalid_install_yaml(self):
     with pytest.raises(ValueError):
       parser = YAMLInstallParser(file_dir="tests/data")
       parser._convert_commands_to_bash_script()

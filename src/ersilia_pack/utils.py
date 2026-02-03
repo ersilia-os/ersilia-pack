@@ -102,15 +102,13 @@ def run_command(cmd, quiet=None):
   return output
 
 
-def eval_conda_prefix():
-  conda_exe = os.environ.get("CONDA_EXE")
-  if not conda_exe:
-    conda_exe = shutil.which("conda")
+def eval_conda_prefix() -> str:
+  conda_exe = os.environ.get("CONDA_EXE") or shutil.which("conda")
 
   if not conda_exe:
     env_prefix = os.environ.get("CONDA_PREFIX")
     if env_prefix:
-      base_candidate = Path(env_prefix).parents[1]  # .../miniconda
+      base_candidate = Path(env_prefix).parents[1]
       candidate = base_candidate / "bin" / "conda"
       if candidate.exists():
         conda_exe = str(candidate)

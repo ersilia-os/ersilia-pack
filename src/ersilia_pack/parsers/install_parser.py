@@ -1,7 +1,4 @@
-import os
-import re
-import warnings
-from ..utils import eval_conda_prefix
+import os, re, warnings
 
 
 class InstallParser:
@@ -17,12 +14,7 @@ class InstallParser:
     raise NotImplementedError("Implement this in subclass")
 
   def get_python_exe(self):
-    conda_prefix = eval_conda_prefix()
-    if not conda_prefix:
-      return "python"
-    if self.conda_env_name is None:
-      return f"{conda_prefix}/bin/python"
-    return f"{conda_prefix}/envs/{self.conda_env_name}/bin/python"
+    return "python"
 
   @staticmethod
   def _has_conda(commands):
@@ -128,22 +120,18 @@ class InstallParser:
     if head.lower() in native:
       return raw
 
-    conda_prefix = eval_conda_prefix()
-    env = self.conda_env_name or "base"
-    env_bin = f"{conda_prefix}/envs/{env}/bin" if conda_prefix else ""
-    return f"{env_bin}/{raw}" if env_bin else raw
+    return raw
 
   def _convert_commands_to_bash_script(self):
     commands = self._get_commands()
     has_conda = self._has_conda(commands)
-    conda_prefix = eval_conda_prefix() or ""
     python_exe = self.get_python_exe()
     lines = []
 
     if has_conda:
       env = self.conda_env_name or "base"
-      if conda_prefix:
-        lines.append(f"source {conda_prefix}/etc/profile.d/conda.sh")
+      lines.append('CONDA_BASE="$(conda info --base)"')
+      lines.append('source "$CONDA_BASE/etc/profile.d/conda.sh"')
       lines.append(f"conda activate {env}")
 
     for cmd in commands:
@@ -157,7 +145,6 @@ class InstallParser:
         else:
           raw = " ".join(cmd)
           bash = self._prefix_unknown(raw)
-
       else:
         s = str(cmd).lstrip()
         bash = self._prefix_unknown(s)

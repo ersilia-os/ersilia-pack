@@ -12,7 +12,7 @@ class TestDockerfileInstallParser:
     "src.ersilia_pack.parsers.dockerfile_install_parser.FILE_TYPE",
     "simple_dockerfile.txt",
   )
-  def test_simple_dockerfile(self, mock_conda):
+  def test_simple_dockerfile(self):
     parser = DockerfileInstallParser(file_dir="tests/data")
     assert parser._get_python_version() == "3.11"
 
@@ -31,7 +31,7 @@ class TestDockerfileInstallParser:
     "src.ersilia_pack.parsers.dockerfile_install_parser.FILE_TYPE",
     "complex_dockerfile.txt",
   )
-  def test_complex_dockerfile(self, mock_conda):
+  def test_complex_dockerfile(self):
     parser = DockerfileInstallParser(file_dir="tests/data")
     assert parser._get_python_version() == "3.9"
 
@@ -62,7 +62,7 @@ class TestDockerfileInstallParser:
     "src.ersilia_pack.parsers.dockerfile_install_parser.FILE_TYPE",
     "invalid_dockerfile.txt",
   )
-  def test_invalid_dockerfile(self, mock_conda):
+  def test_invalid_dockerfile(self):
     parser = DockerfileInstallParser(file_dir="tests/data")
     with pytest.raises(ValueError) as e:
       parser._convert_commands_to_bash_script()
