@@ -1,4 +1,8 @@
-import os, re, warnings
+import os
+import re
+import shlex
+import warnings
+
 from ..utils import get_conda_source, get_native
 
 
@@ -19,27 +23,48 @@ class InstallParser:
 
   @staticmethod
   def _has_conda(commands):
-    return any("conda" in cmd for cmd in commands)
+    for cmd in commands:
+      if isinstance(cmd, list):
+        if cmd and str(cmd[0]).strip().lower() == "conda":
+          return True
+        s = " ".join(map(str, cmd)).lstrip().lower()
+        if s.startswith("conda "):
+          return True
+      else:
+        s = str(cmd).lstrip().lower()
+        if s.startswith("conda "):
+          return True
+    return False
 
   def _is_valid_url(self, url):
     pattern = re.compile(r"^(git\+https://|git\+ssh://|https://).*")
     return bool(pattern.match(url))
 
   def _convert_pip_entry_to_bash(self, command):
+    if isinstance(command, str):
+      s = command.strip()
+      parts = shlex.split(s)
+      if len(parts) >= 2 and parts[0] in ("pip", "pip3") and parts[1] == "install":
+        return s if parts[0] == "pip" else "pip " + " ".join(parts[1:])
+      return s
+
     if len(command) == 2:
       pkg = command[1]
       if pkg.startswith("git+"):
         if not self._is_valid_url(pkg):
           raise ValueError("Invalid Git URL provided")
         return f"pip install {pkg}"
-      else:
-        raise ValueError("pip install entry must include version")
+      raise ValueError("pip install entry must include version")
+
     pkg, ver = command[1], command[2]
     spec = pkg if ver == "" else f"{pkg}=={ver}"
     flags = command[3:]
     return f"pip install {spec}" + (" " + " ".join(flags) if flags else "")
 
   def _convert_conda_entry_to_bash(self, command):
+    if isinstance(command, str):
+      return command.strip()
+
     if len(command) >= 4 and command[1] != "install":
       _, pkg, ver, *rest = command
       if not re.match(r"^[\w\-.]+(?:={1,2})[\w\-.]+$", f"{pkg}={ver}"):
@@ -84,15 +109,22 @@ class InstallParser:
     return " ".join(cmd)
 
   def _prefix_unknown(self, raw):
-    if not raw.strip():
+    s = str(raw).strip()
+    if not s:
       return ""
-
-    head = raw.split()[0]
+    head = s.split()[0]
     native = get_native()
     if head.lower() in native:
-      return raw
+      return s
+    return s
 
-    return raw
+  @staticmethod
+  def _head_of_string(cmd_str):
+    try:
+      parts = shlex.split(cmd_str.strip())
+    except ValueError:
+      parts = cmd_str.strip().split()
+    return parts[0].lower() if parts else ""
 
   def _convert_commands_to_bash_script(self):
     commands = self._get_commands()
@@ -106,20 +138,31 @@ class InstallParser:
 
     for cmd in commands:
       if isinstance(cmd, list):
-        head = cmd[0].lower()
+        head = str(cmd[0]).lower() if cmd else ""
 
         if head == "pip":
-          bash = f"{python_exe} -m {self._convert_pip_entry_to_bash(cmd)}"
+          pip_cmd = self._convert_pip_entry_to_bash(cmd)
+          lines.append(f"{python_exe} -m {pip_cmd}")
         elif head == "conda":
-          bash = self._convert_conda_entry_to_bash(cmd)
+          lines.append(self._convert_conda_entry_to_bash(cmd))
         else:
-          raw = " ".join(cmd)
-          bash = self._prefix_unknown(raw)
-      else:
-        s = str(cmd).lstrip()
-        bash = self._prefix_unknown(s)
+          raw = " ".join(map(str, cmd))
+          lines.append(self._prefix_unknown(raw))
+        continue
 
-      lines.append(bash)
+      s = str(cmd).strip()
+      if not s:
+        continue
+
+      head = self._head_of_string(s)
+
+      if head in ("pip", "pip3"):
+        pip_cmd = self._convert_pip_entry_to_bash(s)
+        lines.append(f"{python_exe} -m {pip_cmd}")
+      elif head == "conda":
+        lines.append(self._convert_conda_entry_to_bash(s))
+      else:
+        lines.append(self._prefix_unknown(s))
 
     return os.linesep.join(lines)
 
