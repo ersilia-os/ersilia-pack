@@ -1,4 +1,5 @@
 import os, re, warnings
+from ..utils import get_conda_source, get_native
 
 
 class InstallParser:
@@ -18,7 +19,7 @@ class InstallParser:
 
   @staticmethod
   def _has_conda(commands):
-    return any(isinstance(cmd, list) and cmd[0] == "conda" for cmd in commands)
+    return any("conda" in cmd for cmd in commands)
 
   def _is_valid_url(self, url):
     pattern = re.compile(r"^(git\+https://|git\+ssh://|https://).*")
@@ -87,36 +88,7 @@ class InstallParser:
       return ""
 
     head = raw.split()[0]
-
-    native = {
-      "apt",
-      "apt-get",
-      "apt-cache",
-      "apt-key",
-      "curl",
-      "wget",
-      "ls",
-      "cd",
-      "cat",
-      "echo",
-      "touch",
-      "mkdir",
-      "rm",
-      "cp",
-      "mv",
-      "bash",
-      "sh",
-      "sudo",
-      "python",
-      "python3",
-      "pip",
-      "conda",
-      "from",
-      "workdir",
-      "copy",
-      "maintainer",
-    }
-
+    native = get_native()
     if head.lower() in native:
       return raw
 
@@ -130,9 +102,7 @@ class InstallParser:
 
     if has_conda:
       env = self.conda_env_name or "base"
-      lines.append('CONDA_BASE="$(conda info --base)"')
-      lines.append('source "$CONDA_BASE/etc/profile.d/conda.sh"')
-      lines.append(f"conda activate {env}")
+      lines += get_conda_source(env)
 
     for cmd in commands:
       if isinstance(cmd, list):
@@ -156,8 +126,9 @@ class InstallParser:
   def write_bash_script(self, file_name=None):
     if file_name is None:
       file_name = os.path.splitext(self.file_name)[0] + ".sh"
+    data = self._convert_commands_to_bash_script()
     with open(file_name, "w") as f:
-      f.write(self._convert_commands_to_bash_script())
+      f.write(data)
 
   def check_file_exists(self):
     return os.path.exists(self.file_name)

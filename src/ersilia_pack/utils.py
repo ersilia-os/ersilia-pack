@@ -120,3 +120,62 @@ def eval_conda_prefix() -> str:
   if p.returncode != 0:
     return ""
   return p.stdout.strip()
+
+
+def get_conda_source(env):
+  return [
+    "set -euo pipefail",
+    'CONDA_SH=""',
+    'if [ -n "${CONDA_EXE:-}" ] && [ -x "${CONDA_EXE}" ]; then',
+    '  CONDA_BASE="$(cd "$(dirname "$(dirname "${CONDA_EXE}")")" && pwd)"',
+    '  if [ -f "${CONDA_BASE}/etc/profile.d/conda.sh" ]; then',
+    '    CONDA_SH="${CONDA_BASE}/etc/profile.d/conda.sh"',
+    "  fi",
+    "fi",
+    'if [ -z "${CONDA_SH}" ]; then',
+    '  for b in "$HOME/miniconda" "$HOME/miniconda3" "$HOME/mambaforge" "$HOME/anaconda3" "/opt/conda" "/usr/share/miniconda"; do',
+    '    if [ -f "$b/etc/profile.d/conda.sh" ]; then',
+    '      CONDA_SH="$b/etc/profile.d/conda.sh"',
+    "      break",
+    "    fi",
+    "  done",
+    "fi",
+    'if [ -z "${CONDA_SH}" ]; then',
+    '  echo "ERROR: conda.sh not found. Ensure conda is installed on this machine." >&2',
+    "  exit 127",
+    "fi",
+    'source "$CONDA_SH"',
+    f"conda activate {env}",
+  ]
+
+
+def get_native():
+  return {
+    "apt",
+    "apt-get",
+    "apt-cache",
+    "apt-key",
+    "curl",
+    "wget",
+    "ls",
+    "cd",
+    "cat",
+    "echo",
+    "touch",
+    "mkdir",
+    "rm",
+    "cp",
+    "export",
+    "mv",
+    "bash",
+    "sh",
+    "sudo",
+    "python",
+    "python3",
+    "pip",
+    "conda",
+    "from",
+    "workdir",
+    "copy",
+    "maintainer",
+  }

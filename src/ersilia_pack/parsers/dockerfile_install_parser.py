@@ -1,5 +1,6 @@
 import os
 import re
+import shlex
 
 from .install_parser import InstallParser
 
@@ -24,42 +25,103 @@ class DockerfileInstallParser(InstallParser):
     raise ValueError("Python version not found")
 
   @staticmethod
-  def _tokenize(command):
-    return command.split()
+  def _is_flag(tok: str) -> bool:
+    return tok.startswith("-")
 
   @staticmethod
-  def _process_pip_command(command):
-    parts = DockerfileInstallParser._tokenize(command)
-    if len(parts) < 3 or parts[0] != "pip" or parts[1] != "install":
-      raise ValueError("Invalid pip install command")
-    pkg_spec = parts[2]
-    if pkg_spec.startswith("git+"):
-      flags = parts[3:]
-      return ["pip", pkg_spec, ""] + flags
-    if "==" in pkg_spec:
-      pkg, ver = pkg_spec.split("==", 1)
-    else:
-      raise ValueError("pip install must specify version or git URL")
-    flags = parts[3:]
-    return ["pip", pkg, ver] + flags
+  def _is_git_spec(tok: str) -> bool:
+    return tok.startswith("git+")
 
   @staticmethod
-  def _process_conda_command(command):
-    parts = command.split()
-    if len(parts) < 3 or parts[0] != "conda" or parts[1] != "install":
-      raise ValueError("Invalid conda install command")
-    return parts
+  def _validate_pip_pkg_spec(tok: str) -> None:
+    if DockerfileInstallParser._is_git_spec(tok):
+      return
+    if "==" not in tok:
+      raise ValueError(f"pip install must pin versions (use '=='): got '{tok}'")
+    pkg, ver = tok.split("==", 1)
+    if not pkg or not ver:
+      raise ValueError(f"Invalid pip pin: '{tok}'")
+
+  @staticmethod
+  def _validate_conda_pkg_spec(tok: str) -> None:
+    if "=" not in tok:
+      raise ValueError(f"conda install must pin versions (use '='): got '{tok}'")
+    pkg, ver = tok.split("=", 1)
+    if pkg.endswith("="):
+      pkg = pkg[:-1]
+      if ver.startswith("="):
+        ver = ver[1:]
+    if not pkg or not ver:
+      raise ValueError(f"Invalid conda pin: '{tok}'")
+    if not re.match(r"^[A-Za-z0-9._-]+$", pkg):
+      raise ValueError(f"Invalid conda package name: '{pkg}'")
+
+  @staticmethod
+  def _validate_pip_install(parts: list[str]) -> None:
+    if len(parts) < 3:
+      raise ValueError("pip install must include at least one package spec")
+    i = 2
+    while i < len(parts):
+      tok = parts[i]
+      if DockerfileInstallParser._is_flag(tok):
+        if tok in (
+          "-i",
+          "--index-url",
+          "--extra-index-url",
+          "-f",
+          "--find-links",
+        ) and i + 1 < len(parts):
+          i += 2
+        else:
+          i += 1
+        continue
+      DockerfileInstallParser._validate_pip_pkg_spec(tok)
+      i += 1
+
+  @staticmethod
+  def _validate_conda_install(parts: list[str]) -> None:
+    if len(parts) < 3:
+      raise ValueError("conda install must include at least one package spec")
+    i = 2
+    saw_pkg = False
+    while i < len(parts):
+      tok = parts[i]
+      if tok in ("-c", "--channel"):
+        if i + 1 >= len(parts):
+          raise ValueError("conda install: -c/--channel must have a value")
+        i += 2
+        continue
+      if tok in ("-y", "--yes", "--quiet", "-q", "--freeze-installed"):
+        i += 1
+        continue
+      if DockerfileInstallParser._is_flag(tok):
+        i += 1
+        continue
+      saw_pkg = True
+      DockerfileInstallParser._validate_conda_pkg_spec(tok)
+      i += 1
+    if not saw_pkg:
+      raise ValueError("conda install must include at least one pinned package spec")
+
+  @staticmethod
+  def _maybe_validate_install_command(cmd: str) -> None:
+    parts = shlex.split(cmd)
+    if len(parts) >= 2 and parts[0] == "pip" and parts[1] == "install":
+      DockerfileInstallParser._validate_pip_install(parts)
+      return
+    if len(parts) >= 2 and parts[0] == "conda" and parts[1] == "install":
+      DockerfileInstallParser._validate_conda_install(parts)
+      return
 
   def _get_commands(self):
     cmds = []
     with open(self.file_name) as f:
       for line in f:
-        if line.strip().startswith("RUN"):
-          cmd = line.strip()[3:].strip()
-          if cmd.startswith("pip"):
-            cmds.append(self._process_pip_command(cmd))
-          elif cmd.startswith("conda"):
-            cmds.append(self._process_conda_command(cmd))
-          else:
-            cmds.append(cmd)
+        s = line.strip()
+        if not s or s.startswith("#"):
+          continue
+        if s.startswith("RUN "):
+          cmd = s[4:].strip()
+          self._maybe_validate_install_command(cmd)
+          cmds.append(cmd)
     return cmds
