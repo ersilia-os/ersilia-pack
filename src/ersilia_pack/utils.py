@@ -12,6 +12,7 @@ COLORS = {
 }
 
 BASE = "base"
+TEST_BASE = "test"
 PYTHON_EXE = "python"
 
 
@@ -159,28 +160,43 @@ def get_conda_source(env):
   ]
 
 
-def conda_python_executable(env):
-  if env is None:
-    env = BASE
-
-  lines = get_conda_source(env) + [r'python -c "import sys; print(sys.executable)"']
-
-  script = "\n".join(lines)
-
-  proc = subprocess.run(
+def run_bash(script):
+  return subprocess.run(
     ["bash", "-lc", script],
     text=True,
     capture_output=True,
   )
 
-  if proc.returncode != 0:
-    raise RuntimeError(
-      f"Failed to get python path for conda env '{env}'.\n"
-      f"stdout:\n{proc.stdout}\n"
-      f"stderr:\n{proc.stderr}"
-    )
 
-  return proc.stdout.strip() or PYTHON_EXE
+def build_python_executable_script(env):
+  lines = get_conda_source(env) + [r'python -c "import sys; print(sys.executable)"']
+  return "\n".join(lines)
+
+
+def get_python_executable_from_env(env):
+  proc = run_bash(build_python_executable_script(env))
+  if proc.returncode != 0:
+    return "", proc
+  return (proc.stdout or "").strip(), proc
+
+
+def conda_python_executable(env=None):
+  env = env or BASE
+
+  python_path, proc = get_python_executable_from_env(env)
+  if python_path:
+    return python_path
+
+  python_path, proc = get_python_executable_from_env(TEST_BASE)
+  if python_path:
+    return python_path
+
+  print(
+    f"Failed to get python path for conda env '{env}'.\n"
+    f"stdout:\n{proc.stdout}\n"
+    f"stderr:\n{proc.stderr}"
+  )
+  return PYTHON_EXE
 
 
 NATIVE = frozenset({
