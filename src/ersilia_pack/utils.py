@@ -173,33 +173,38 @@ def conda_python_executable(env):
   return proc.stdout.strip() or None
 
 
+BASE = "base"
+
+NATIVE = frozenset({
+  "apt",
+  "apt-get",
+  "apt-cache",
+  "apt-key",
+  "curl",
+  "wget",
+  "ls",
+  "cd",
+  "cat",
+  "echo",
+  "touch",
+  "mkdir",
+  "rm",
+  "cp",
+  "export",
+  "mv",
+  "bash",
+  "sh",
+  "sudo",
+  "python",
+  "python3",
+  "pip",
+  "conda",
+  "from",
+  "workdir",
+  "copy",
+  "maintainer",
+})
+
+
 def get_native():
-  return {
-    "apt",
-    "apt-get",
-    "apt-cache",
-    "apt-key",
-    "curl",
-    "wget",
-    "ls",
-    "cd",
-    "cat",
-    "echo",
-    "touch",
-    "mkdir",
-    "rm",
-    "cp",
-    "export",
-    "mv",
-    "bash",
-    "sh",
-    "sudo",
-    "python",
-    "python3",
-    "pip",
-    "conda",
-    "from",
-    "workdir",
-    "copy",
-    "maintainer",
-  }
+  return NATIVE

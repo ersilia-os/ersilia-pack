@@ -18,6 +18,11 @@ class InstallParser:
   def _get_commands(self):
     raise NotImplementedError("Implement this in subclass")
 
+  def get_python_exe(self):
+    if self.conda_env_name:
+      return conda_python_executable(self.conda_env_name)
+    return "python"
+
   @staticmethod
   def _has_conda(commands):
     for cmd in commands:
@@ -127,7 +132,7 @@ class InstallParser:
     commands = self._get_commands()
     has_conda = self._has_conda(commands)
     env = self.conda_env_name or "base"
-    python_exe = conda_python_executable(env) if has_conda else "python"
+    python_exe = self.get_python_exe()
     lines = get_conda_source(env) if has_conda else []
 
     def add_pip(x):
