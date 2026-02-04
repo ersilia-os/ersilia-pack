@@ -11,6 +11,9 @@ COLORS = {
   logging.CRITICAL: "\033[1;31m",
 }
 
+BASE = "base"
+PYTHON_EXE = "python"
+
 
 class ColorFormatter(logging.Formatter):
   def format(self, record):
@@ -126,14 +129,21 @@ def get_conda_source(env):
   return [
     "set -euo pipefail",
     'CONDA_SH=""',
-    'if [ -n "${CONDA_EXE:-}" ] && [ -x "${CONDA_EXE}" ]; then',
+    'CONDA_BIN="$(command -v conda || true)"',
+    'if [ -n "${CONDA_BIN}" ] && [ -x "${CONDA_BIN}" ]; then',
+    '  CONDA_BASE="$(cd "$(dirname "$(dirname "${CONDA_BIN}")")" && pwd)"',
+    '  if [ -f "${CONDA_BASE}/etc/profile.d/conda.sh" ]; then',
+    '    CONDA_SH="${CONDA_BASE}/etc/profile.d/conda.sh"',
+    "  fi",
+    "fi",
+    'if [ -z "${CONDA_SH}" ] && [ -n "${CONDA_EXE:-}" ] && [ -x "${CONDA_EXE}" ]; then',
     '  CONDA_BASE="$(cd "$(dirname "$(dirname "${CONDA_EXE}")")" && pwd)"',
     '  if [ -f "${CONDA_BASE}/etc/profile.d/conda.sh" ]; then',
     '    CONDA_SH="${CONDA_BASE}/etc/profile.d/conda.sh"',
     "  fi",
     "fi",
     'if [ -z "${CONDA_SH}" ]; then',
-    '  for b in "$HOME/miniconda" "$HOME/miniconda3" "$HOME/mambaforge" "$HOME/anaconda3" "/opt/conda" "/usr/share/miniconda"; do',
+    '  for b in "/usr/bin/conda" "$HOME/miniconda" "$HOME/miniconda3" "$HOME/mambaforge" "$HOME/anaconda3" "/opt/conda" "/usr/share/miniconda"; do',
     '    if [ -f "$b/etc/profile.d/conda.sh" ]; then',
     '      CONDA_SH="$b/etc/profile.d/conda.sh"',
     "      break",
@@ -145,13 +155,13 @@ def get_conda_source(env):
     "  exit 127",
     "fi",
     'source "$CONDA_SH"',
-    f"conda activate {env}",
+    f'conda activate "{env}"',
   ]
 
 
 def conda_python_executable(env):
   if env is None:
-    return None
+    env = BASE
 
   lines = get_conda_source(env) + [r'python -c "import sys; print(sys.executable)"']
 
@@ -170,10 +180,8 @@ def conda_python_executable(env):
       f"stderr:\n{proc.stderr}"
     )
 
-  return proc.stdout.strip() or None
+  return proc.stdout.strip() or PYTHON_EXE
 
-
-BASE = "base"
 
 NATIVE = frozenset({
   "apt",

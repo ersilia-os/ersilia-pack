@@ -1,10 +1,22 @@
 from unittest.mock import patch
+import re
 
 import pytest
 
-from src.ersilia_pack.parsers.dockerfile_install_parser import (
-  DockerfileInstallParser,
-)
+from src.ersilia_pack.parsers.dockerfile_install_parser import DockerfileInstallParser
+
+
+def _normalize_python_in_script(script: str) -> str:
+  """
+  Make tests portable across environments by normalizing any absolute python
+  interpreter path (e.g. /home/.../bin/python) to just 'python'.
+  """
+  return re.sub(
+    r"^\S*python\s+-m\s+pip",
+    "python -m pip",
+    script,
+    flags=re.MULTILINE,
+  )
 
 
 class TestDockerfileInstallParser:
@@ -21,10 +33,15 @@ class TestDockerfileInstallParser:
       "pip install scikit-learn==1.2.0",
       "pip install rdkit==2023.9.2",
     ]
-    assert parser._has_conda(commands) == False
-    install_script = parser._convert_commands_to_bash_script()
+    assert parser._has_conda(commands) is False
+
+    install_script = _normalize_python_in_script(
+      parser._convert_commands_to_bash_script()
+    )
+
     with open("tests/data/simple_dockerfile.sh", "r") as file:
       expected_script = file.read()
+
     assert install_script == expected_script
 
   @patch(
@@ -37,16 +54,21 @@ class TestDockerfileInstallParser:
 
     commands = parser._get_commands()
     assert commands == [
-        "pip install rdkit==2024.3.5",
-        "pip install git+https://github.com/example.git",
-        "pip install torch==2.4.1 --index-url https://download.pytorch.org/whl/cpu",
-        "pip install molfeat[transformer]==0.10.0"
+      "pip install rdkit==2024.3.5",
+      "pip install git+https://github.com/example.git",
+      "pip install torch==2.4.1 --index-url https://download.pytorch.org/whl/cpu",
+      "pip install molfeat[transformer]==0.10.0",
     ]
 
-    assert parser._has_conda(commands) == False
-    install_script = parser._convert_commands_to_bash_script()
+    assert parser._has_conda(commands) is False
+
+    install_script = _normalize_python_in_script(
+      parser._convert_commands_to_bash_script()
+    )
+
     with open("tests/data/complex_dockerfile.sh", "r") as file:
       expected_script = file.read()
+
     assert install_script == expected_script
 
   @patch(
@@ -55,5 +77,5 @@ class TestDockerfileInstallParser:
   )
   def test_invalid_dockerfile(self):
     parser = DockerfileInstallParser(file_dir="tests/data")
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
       parser._convert_commands_to_bash_script()

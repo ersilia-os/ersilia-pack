@@ -19,9 +19,7 @@ class InstallParser:
     raise NotImplementedError("Implement this in subclass")
 
   def get_python_exe(self):
-    if self.conda_env_name:
-      return conda_python_executable(self.conda_env_name)
-    return "python"
+    return conda_python_executable(self.conda_env_name)
 
   @staticmethod
   def _has_conda(commands):
