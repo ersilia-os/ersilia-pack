@@ -3,7 +3,7 @@ import re
 import shlex
 import warnings
 
-from ..utils import get_conda_source, get_native
+from ..utils import get_conda_source, get_native, conda_python_executable
 
 
 class InstallParser:
@@ -17,9 +17,6 @@ class InstallParser:
 
   def _get_commands(self):
     raise NotImplementedError("Implement this in subclass")
-
-  def get_python_exe(self):
-    return "python"
 
   @staticmethod
   def _has_conda(commands):
@@ -129,36 +126,32 @@ class InstallParser:
   def _convert_commands_to_bash_script(self):
     commands = self._get_commands()
     has_conda = self._has_conda(commands)
-    python_exe = self.get_python_exe()
-    lines = []
+    env = self.conda_env_name or "base"
+    python_exe = conda_python_executable(env) if has_conda else "python"
+    lines = get_conda_source(env) if has_conda else []
 
-    if has_conda:
-      env = self.conda_env_name or "base"
-      lines += get_conda_source(env)
+    def add_pip(x):
+      lines.append(f"{python_exe} -m {self._convert_pip_entry_to_bash(x)}")
 
     for cmd in commands:
       if isinstance(cmd, list):
-        head = str(cmd[0]).lower() if cmd else ""
-
+        if not cmd:
+          continue
+        head = str(cmd[0]).lower()
         if head == "pip":
-          pip_cmd = self._convert_pip_entry_to_bash(cmd)
-          lines.append(f"{python_exe} -m {pip_cmd}")
+          add_pip(cmd)
         elif head == "conda":
           lines.append(self._convert_conda_entry_to_bash(cmd))
         else:
-          raw = " ".join(map(str, cmd))
-          lines.append(self._prefix_unknown(raw))
+          lines.append(self._prefix_unknown(" ".join(map(str, cmd))))
         continue
 
       s = str(cmd).strip()
       if not s:
         continue
-
       head = self._head_of_string(s)
-
       if head in ("pip", "pip3"):
-        pip_cmd = self._convert_pip_entry_to_bash(s)
-        lines.append(f"{python_exe} -m {pip_cmd}")
+        add_pip(s)
       elif head == "conda":
         lines.append(self._convert_conda_entry_to_bash(s))
       else:

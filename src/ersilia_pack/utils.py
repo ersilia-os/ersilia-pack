@@ -149,6 +149,30 @@ def get_conda_source(env):
   ]
 
 
+def conda_python_executable(env):
+  if env is None:
+    return None
+
+  lines = get_conda_source(env) + [r'python -c "import sys; print(sys.executable)"']
+
+  script = "\n".join(lines)
+
+  proc = subprocess.run(
+    ["bash", "-lc", script],
+    text=True,
+    capture_output=True,
+  )
+
+  if proc.returncode != 0:
+    raise RuntimeError(
+      f"Failed to get python path for conda env '{env}'.\n"
+      f"stdout:\n{proc.stdout}\n"
+      f"stderr:\n{proc.stderr}"
+    )
+
+  return proc.stdout.strip() or None
+
+
 def get_native():
   return {
     "apt",
