@@ -57,8 +57,8 @@ class InstallParser:
       raise ValueError("pip install entry must include version")
 
     pkg, ver = command[1], command[2]
-    spec = pkg if ver == "" else f"{pkg}=={ver}"
-    flags = command[3:]
+    spec = pkg if (ver == "" or "git+" in pkg) else f"{pkg}=={ver}"
+    flags = command[2:] if "git+" in pkg else command[3:]
     return f"pip install {spec}" + (" " + " ".join(flags) if flags else "")
 
   def _convert_conda_entry_to_bash(self, command):
