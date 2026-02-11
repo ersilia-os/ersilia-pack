@@ -67,8 +67,6 @@ class InstallParser:
 
     if len(command) >= 4 and command[1] != "install":
       _, pkg, ver, *rest = command
-      if not re.match(r"^[\w\-.]+(?:={1,2})[\w\-.]+$", f"{pkg}={ver}"):
-        raise ValueError("Invalid conda version pin")
       channels = [x for x in rest if x not in ("-y",)]
       flags = [x for x in rest if x == "-y"]
       if not channels:
