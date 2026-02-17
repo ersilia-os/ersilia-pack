@@ -1,4 +1,4 @@
-import asyncio, csv, os, subprocess, psutil, json, redis, itertools, numpy, struct
+import asyncio, csv, os, subprocess, psutil, json, redis, itertools, numpy, struct, time
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from redis import Redis
 from slowapi import Limiter
@@ -29,6 +29,9 @@ from .default import (
 )
 
 CHUNK_MULTIPLIER = 4
+redis_client = None
+_redis_state = {"ok": False, "last_check": 0.0}
+REDIS_RETRY_AFTER_S = 30.0
 
 
 def resolve_dtype(dtype):
@@ -241,19 +244,36 @@ def orient_to_json(values, columns, index, orient, output_type):
 
 
 def conn_redis():
-  redis_client = Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+  redis_client = Redis(
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    decode_responses=True,
+    socket_connect_timeout=0.2,
+    socket_timeout=0.5,
+    retry_on_timeout=False,
+  )
   redis_client.ping()
   return redis_client
 
 
 def init_redis():
-  global redis_client
+  global redis_client, _redis_state
+  now = time.time()
+
+  if (
+    not _redis_state["ok"] and (now - _redis_state["last_check"]) < REDIS_RETRY_AFTER_S
+  ):
+    return False
+
+  _redis_state["last_check"] = now
   try:
     redis_client = conn_redis()
+    _redis_state["ok"] = True
     cprint("Redis connected", fg="green", bold=True)
     return True
   except redis.ConnectionError:
     redis_client = None
+    _redis_state["ok"] = False
     cprint("Redis not connected", fg="yellow", bold=True)
     return False
 
