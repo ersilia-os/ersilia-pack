@@ -6,7 +6,6 @@ from fastapi.responses import JSONResponse
 
 from ..default import CardField, Worker, APIInfo, resolve_model_version
 from ..default import (
-  ROOT_ENDPOINT_LOADED,
   API_ID,
   API_START_TIME,
   RUNTIME,
@@ -57,11 +56,6 @@ async def get_specific_field(
   return {field_value: metadata[field_value]}
 
 
-def compute_status() -> str:
-  global ROOT_ENDPOINT_LOADED
-  return "READY" if ROOT_ENDPOINT_LOADED else "NOT_READY"
-
-
 @router.get("/", tags=["Root"])
 async def read_root(request: Request, metadata: Dict[str, Any] = Depends(get_metadata)):
   return {metadata["Identifier"]: metadata["Slug"]}
@@ -76,13 +70,12 @@ async def get_api_info(
   request: Request, metadata: Dict[str, Any] = Depends(get_metadata)
 ):
   memory_usage = compute_memory_usage()
-  status = compute_status()
   pid = os.getpid()
 
   worker_info = Worker(
     id=API_ID,
     startTime=API_START_TIME,
-    status=status,
+    status="READY",
     memoryUsage=memory_usage,
     pid=pid,
   )

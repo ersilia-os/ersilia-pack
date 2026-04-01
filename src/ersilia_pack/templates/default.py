@@ -105,7 +105,6 @@ class CardField(str, Enum):
 
 API_ID = str(uuid.uuid4())
 API_START_TIME = datetime.utcnow().isoformat() + "Z"
-ROOT_ENDPOINT_LOADED = False
 
 
 class Worker(BaseModel):

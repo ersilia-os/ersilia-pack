@@ -7,13 +7,14 @@ from .utils import find_free_port, logger
 
 
 class BundleServer(object):
-  def __init__(self, bundle_path, host, port):
+  def __init__(self, bundle_path, host, port, root_path=""):
     self.bundle_path = os.path.abspath(bundle_path)
     self._resolve_bundle_path()
     self.host = host
     if port is None:
       port = find_free_port(self.host)
     self.port = port
+    self.root_path = root_path
 
   def _resolve_bundle_path(self):
     subfolders = os.listdir(self.bundle_path)
@@ -27,6 +28,8 @@ class BundleServer(object):
     cmd = "{0} {1}/run_uvicorn.py --host {2} --port {3}".format(
       sys.executable, self.bundle_path, self.host, self.port
     )
+    if self.root_path:
+      cmd += " --root-path {0}".format(self.root_path)
     logger.info(cmd)
     cmd = [
       sys.executable,
@@ -36,6 +39,8 @@ class BundleServer(object):
       "--port",
       str(self.port),
     ]
+    if self.root_path:
+      cmd += ["--root-path", self.root_path]
     subprocess.run(cmd, check=True)
     logger.info("App served successfully")
 
@@ -60,8 +65,16 @@ def main():
     type=int,
     help="An integer for the port",
   )
+  parser.add_argument(
+    "--root-path",
+    "--root_path",
+    dest="root_path",
+    default=os.getenv("ROOT_PATH", ""),
+    type=str,
+    help="ASGI root_path for deployments behind a stripped path prefix",
+  )
   args = parser.parse_args()
-  bs = BundleServer(args.bundle_path, args.host, args.port)
+  bs = BundleServer(args.bundle_path, args.host, args.port, args.root_path)
   bs.serve()
 
 
