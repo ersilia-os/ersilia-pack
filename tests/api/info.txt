@@ -28,6 +28,7 @@
         "Source Code": "https://github.com/rdkit/rdkit",
         "License": "BSD-3.0",
         "Contributor": "miquelduranfrigola",
+        "Release": "v1.0.0",
         "S3": "https://ersilia-models-zipped.s3.eu-central-1.amazonaws.com/eos3b5e.zip",
         "DockerHub": "https://hub.docker.com/r/ersiliaos/eos3b5e",
         "Docker Architecture": [

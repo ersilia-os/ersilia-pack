@@ -170,6 +170,26 @@ class TestFastApiPacker:
 
         assert os.path.exists(os.path.join(packer.bundle_dir, "model", "test_file.txt"))
 
+    def test_load_metadata_uses_release_from_install_yml(self, temp_model_directory, bundles_repo_path):
+        metadata_file = temp_model_directory / "metadata.json"
+        metadata_file.write_text(json.dumps({
+            "Identifier": "test_model_id",
+            "Slug": "test-model",
+            "Input": ["Compound"],
+            "Output Type": ["Float"],
+            "Output Shape": "Single"
+        }))
+
+        install_file = temp_model_directory / "install.yml"
+        install_file.write_text(yaml.dump({
+            "python": "3.8",
+            "release": "v9.9.9"
+        }))
+
+        packer = FastApiAppPacker(str(temp_model_directory), str(bundles_repo_path))
+
+        assert packer._load_metadata()["Release"] == "v9.9.9"
+
     # 5. Test _get_input_schema
     @patch("shutil.copy")
     def test_get_input_schema(self, mock_copy, temp_model_directory, bundles_repo_path):

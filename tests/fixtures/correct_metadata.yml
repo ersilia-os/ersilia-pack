@@ -16,6 +16,7 @@ Publication: https://example.com/publication
 Source Code: https://github.com/example/repo
 License: MIT
 Contributor: John Doe
+Release: v2.3.4
 S3: s3://example-bucket
 DockerHub: dockerhub/example-repo
 Docker Architecture: 

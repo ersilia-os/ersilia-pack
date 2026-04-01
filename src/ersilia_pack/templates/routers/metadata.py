@@ -4,12 +4,11 @@ from typing import Dict, List, Union, Any
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
-from ..default import CardField, Worker, APIInfo
+from ..default import CardField, Worker, APIInfo, resolve_model_version
 from ..default import (
   ROOT_ENDPOINT_LOADED,
   API_ID,
   API_START_TIME,
-  MODEL_VERSION,
   RUNTIME,
   MAX_WORKERS,
   MIN_WORKERS,
@@ -90,7 +89,7 @@ async def get_api_info(
 
   api_info = APIInfo(
     modelName=metadata["Identifier"],
-    modelVersion=MODEL_VERSION,
+    modelVersion=resolve_model_version(metadata),
     runtime=RUNTIME,
     minWorkers=MIN_WORKERS,
     maxWorkers=MAX_WORKERS,

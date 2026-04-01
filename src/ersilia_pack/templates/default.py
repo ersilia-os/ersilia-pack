@@ -73,6 +73,13 @@ else:
 OUTPUT_CONSISTENCY = "Output Consistency"
 
 
+def resolve_model_version(metadata, fallback=None):
+  for key, value in metadata.items():
+    if str(key).lower() == "release" and value is not None:
+      return str(value)
+  return fallback if fallback is not None else MODEL_VERSION
+
+
 class OrientEnum(str, Enum):
   RECORDS = "records"
   COLUMNS = "columns"

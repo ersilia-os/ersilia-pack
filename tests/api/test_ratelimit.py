@@ -9,6 +9,8 @@ os.environ["REDIS_URI"] = "redis://localhost:6379"
 
 sys.path.insert(0, "../../src/ersilia_pack")
 
+pytest.importorskip("slowapi")
+
 @pytest.fixture
 def create_information_file():
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -43,4 +45,19 @@ def test_rate_limiting(create_information_file):
     resp_three = client.get("/card")
     assert resp_three.status_code == 429, f"Expected 429, got {resp_three.status_code}"
     assert "Retry-After" in resp_three.headers, "Missing Retry-After header"
+
+
+def test_model_status_uses_release(create_information_file):
+
+    from fastapi.testclient import TestClient
+    from src.ersilia_pack.templates.app import app
+
+    client = TestClient(app)
+
+    response = client.get("/models/status")
+
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+    body = response.json()
+    assert body[0]["modelName"] == "eos3b5e"
+    assert body[0]["modelVersion"] == "v1.0.0"
     

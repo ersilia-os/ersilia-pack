@@ -6,6 +6,7 @@ import datetime
 import json
 import urllib.request
 import uuid
+import yaml
 
 from .parsers import (
   DockerfileInstallParser,
@@ -88,6 +89,7 @@ class FastApiAppPacker(object):
 
   def _load_metadata(self):
     data = self._load_metadata_as_dict_from_file()
+    data = self._normalize_release(data)
     if "Input Shape" not in data:
       data["Input Shape"] = "Single"
     if "Output Shape" not in data:
@@ -115,6 +117,40 @@ class FastApiAppPacker(object):
         else:
           raise Exception("Unknown output type as resolved from columns file")
     return data
+
+  def _extract_case_insensitive_value(self, data, field_name):
+    if not isinstance(data, dict):
+      return None, None
+    for key, value in data.items():
+      if str(key).lower() == field_name.lower():
+        return key, value
+    return None, None
+
+  def _load_release_from_install_file(self):
+    install_file = os.path.join(self.dest_dir, "install.yml")
+    if not os.path.exists(install_file):
+      return None
+    with open(install_file, "r") as f:
+      data = yaml.safe_load(f) or {}
+    _, release = self._extract_case_insensitive_value(data, "release")
+    if release is None:
+      return None
+    return str(release)
+
+  def _normalize_release(self, data):
+    release_key, release_value = self._extract_case_insensitive_value(data, "release")
+    normalized = dict(data)
+
+    if release_key is not None:
+      normalized.pop(release_key)
+      normalized["Release"] = str(release_value)
+      return normalized
+
+    release_value = self._load_release_from_install_file()
+    if release_value is not None:
+      normalized["Release"] = release_value
+
+    return normalized
 
   def _get_info(self):
     logger.debug("Getting info from metadata")

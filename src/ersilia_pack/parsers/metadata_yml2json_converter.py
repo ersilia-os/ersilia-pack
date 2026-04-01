@@ -92,6 +92,10 @@ class MetadataYml2JsonConverter:
       data["Contributor"] = self._tostr(self.data["Contributor"])
     if "Incorporation Date" in self.data:
       data["Incorporation Date"] = self._tostr(self.data["Incorporation Date"])
+    for key, value in self.data.items():
+      if str(key).lower() == "release":
+        data["Release"] = self._tostr(value)
+        break
     if "S3" in self.data:
       data["S3"] = self._tostr(self.data["S3"])
     if "DockerHub" in self.data:

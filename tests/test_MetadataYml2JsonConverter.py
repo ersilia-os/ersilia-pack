@@ -17,6 +17,7 @@ class TestMetadataYml2JsonConverter:
     assert result["Slug"] == "my-model"
     assert result["Task"] == "Representation"
     assert result["Output"] == ["Compound"]
+    assert result["Release"] == "v2.3.4"
     assert result["Docker Architecture"] == ["AMD64", "ARM64"]
 
   def test_incorrect_metadata_conversion(self):
@@ -36,3 +37,4 @@ class TestMetadataYml2JsonConverter:
       data = json.load(f)
       assert data["Identifier"] == "eos0abc"
       assert data["Slug"] == "my-model"
+      assert data["Release"] == "v2.3.4"
