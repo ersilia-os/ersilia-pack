@@ -146,21 +146,21 @@ jobs:
           - dockerfile: Dockerfile.condapy312_24.7.1-0
             tag: ersiliaos/ersiliapack-conda-py312
             version: py312_24.7.1-0
-          - dockerfile: Dockerfile.pip3.8-slim-bullseye
+          - dockerfile: Dockerfile.pip3.8-slim-bookworm
             tag: ersiliaos/ersiliapack-py38
-            version: 3.8-slim-bullseye
-          - dockerfile: Dockerfile.pip3.9-slim-bullseye
+            version: 3.8-slim-bookworm
+          - dockerfile: Dockerfile.pip3.9-slim-bookworm
             tag: ersiliaos/ersiliapack-py39
-            version: 3.9-slim-bullseye
-          - dockerfile: Dockerfile.pip3.10-slim-bullseye
+            version: 3.9-slim-bookworm
+          - dockerfile: Dockerfile.pip3.10-slim-bookworm
             tag: ersiliaos/ersiliapack-py310
-            version: 3.10-slim-bullseye
-          - dockerfile: Dockerfile.pip3.11-slim-bullseye
+            version: 3.10-slim-bookworm
+          - dockerfile: Dockerfile.pip3.11-slim-bookworm
             tag: ersiliaos/ersiliapack-py311
-            version: 3.11-slim-bullseye
-          - dockerfile: Dockerfile.pip3.12-slim-bullseye
+            version: 3.11-slim-bookworm
+          - dockerfile: Dockerfile.pip3.12-slim-bookworm
             tag: ersiliaos/ersiliapack-py312
-            version: 3.12-slim-bullseye
+            version: 3.12-slim-bookworm
 
     steps:
       # https://github.com/docker/setup-qemu-action
