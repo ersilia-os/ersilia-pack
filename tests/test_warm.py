@@ -12,14 +12,14 @@ import csv, os, sys
 LOADS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "loads.txt")
 
 
-def load():
+def load_tool():
     with open(LOADS_FILE, "a") as f:
         f.write("load\\n")
     print("noise on stdout from load")
     return {"factor": 2}
 
 
-def run(model, input_file, output_file):
+def run_tool(model, input_file, output_file):
     print("noise on stdout from run")
     with open(input_file) as f:
         rows = list(csv.reader(f))[1:]
@@ -37,7 +37,7 @@ def run(model, input_file, output_file):
 
 
 if __name__ == "__main__":
-    run(load(), sys.argv[1], sys.argv[2])
+    run_tool(load_tool(), sys.argv[1], sys.argv[2])
 """
 
 COLD_MAIN = """
@@ -80,6 +80,15 @@ class TestDetection:
 
   def test_script_main_stays_cold(self, framework):
     _write(framework / "code" / "main.py", COLD_MAIN)
+    assert warm.detect_python() is None
+
+  def test_plain_load_and_run_names_stay_cold(self, framework):
+    # Only load_tool/run_tool opt in; a main.py that happens to define
+    # load/run must keep the run.sh path.
+    _write(
+      framework / "code" / "main.py",
+      "def load():\n    return None\n\ndef run(model, i, o):\n    pass\n",
+    )
     assert warm.detect_python() is None
 
   @pytest.mark.parametrize(
@@ -147,8 +156,8 @@ class TestWarmWorker:
     _write(framework / "code" / "utils" / "helper.py", "VALUE = 'model utils'\n")
     _write(
       framework / "code" / "main.py",
-      "def load():\n    from utils.helper import VALUE\n    return VALUE\n\n"
-      "def run(model, i, o):\n    open(o, 'w').write(model)\n",
+      "def load_tool():\n    from utils.helper import VALUE\n    return VALUE\n\n"
+      "def run_tool(model, i, o):\n    open(o, 'w').write(model)\n",
     )
     worker = warm.WarmWorker(sys.executable)
     try:
@@ -161,8 +170,8 @@ class TestWarmWorker:
   def test_load_failure_disables(self, framework, tmp_path):
     _write(
       framework / "code" / "main.py",
-      "def load():\n    raise RuntimeError('no checkpoints')\n\n"
-      "def run(model, i, o):\n    pass\n",
+      "def load_tool():\n    raise RuntimeError('no checkpoints')\n\n"
+      "def run_tool(model, i, o):\n    pass\n",
     )
     worker = warm.WarmWorker(sys.executable)
     assert worker.ensure_loaded() is False

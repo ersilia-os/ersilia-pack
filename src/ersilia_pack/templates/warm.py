@@ -3,7 +3,7 @@ import ast, json, os, re, subprocess, sys, threading
 from .default import FRAMEWORK_FOLDER, ROOT, cprint
 
 # Warm serving keeps a model loaded between batches in a long-lived worker
-# process. A model opts in by giving main.py a load() and a run(model, in, out)
+# process. A model opts in by giving main.py a load_tool() and a run_tool(model, in, out)
 # function. Every other model keeps the cold path: run.sh once per batch.
 
 WARM_ENV_VAR = "ERSILIA_WARM"
@@ -51,7 +51,7 @@ def _main_py_is_warm():
     except SyntaxError:
       return False
   names = {n.name for n in tree.body if isinstance(n, ast.FunctionDef)}
-  return {"load", "run"} <= names
+  return {"load_tool", "run_tool"} <= names
 
 
 def detect_python():
@@ -70,7 +70,7 @@ class WarmWorker(object):
     self.lock = threading.Lock()
     self.proc = None
     self.loaded = False
-    # Set when load() fails: the model then stays on the cold path for good.
+    # Set when load_tool() fails: the model then stays on the cold path for good.
     self.disabled = False
 
   def _start(self):
@@ -90,7 +90,7 @@ class WarmWorker(object):
       self._stop()
       return
     self.loaded = True
-    _log("Model loaded in worker: new structure (load + run)", fg="green", bold=True)
+    _log("Model loaded in worker: new structure (load_tool + run_tool)", fg="green", bold=True)
 
   def _read(self):
     line = self.proc.stdout.readline()
@@ -119,7 +119,7 @@ class WarmWorker(object):
 
   def run(self, input_file, output_file):
     # Raises WarmWorkerDied if the worker cannot be used (the caller should
-    # fall back to run.sh) and WarmRunError if the model's run() failed.
+    # fall back to run.sh) and WarmRunError if the model's run_tool() failed.
     with self.lock:
       if self.disabled:
         raise WarmWorkerDied("warm worker is disabled")

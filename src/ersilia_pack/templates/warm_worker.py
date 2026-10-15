@@ -5,7 +5,7 @@
 #
 # Usage: python warm_worker.py <path/to/main.py>
 #
-# main.py must define load() and run(model, input_file, output_file).
+# main.py must define load_tool() and run_tool(model, input_file, output_file).
 # Protocol (one JSON object per line):
 #   worker -> server, once: {"status": "ready"} or {"status": "error", "error": ...}
 #   server -> worker:       {"input": <path>, "output": <path>}
@@ -59,7 +59,7 @@ def main():
   proto_in, proto_out = _protocol_streams()
   try:
     module = _import_main(main_path)
-    model = module.load()
+    model = module.load_tool()
   except BaseException:
     _send(proto_out, {"status": "error", "error": traceback.format_exc()})
     return 1
@@ -70,7 +70,7 @@ def main():
       continue
     request = json.loads(line)
     try:
-      module.run(model, request["input"], request["output"])
+      module.run_tool(model, request["input"], request["output"])
       _send(proto_out, {"ok": True})
     except BaseException:
       # SystemExit from the model is reported as an error, not obeyed, so one
