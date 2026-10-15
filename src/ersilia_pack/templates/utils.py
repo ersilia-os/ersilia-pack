@@ -1,12 +1,12 @@
-import asyncio, csv, os, subprocess, psutil, json, redis, itertools, numpy, struct
+import asyncio, csv, os, psutil, json, redis, itertools, numpy, struct
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from redis import Redis
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from . import warm
 from .default import (
   ENVIRONMENT,
   DEFAULT_REDIS_URI,
-  ROOT,
   FRAMEWORK_FOLDER,
   TEMP_FOLDER,
   BUNDLE_FOLDER,
@@ -520,6 +520,10 @@ def is_parallel_amenable(data, metadata):
 
 
 def compute_results(data, tag, max_workers, min_workers, metadata, task_type):
+  if warm.is_active():
+    # One warm worker holds the model; splitting across processes would load
+    # it again in each of them.
+    return run_sequential_data(tag, data, metadata["Identifier"], task_type)
   parallel_amenable = is_parallel_amenable(data, metadata)
   cprint(f"Amenable for multiprocessing: {parallel_amenable}", fg="blue")
   if parallel_amenable:
@@ -539,10 +543,7 @@ def _process_chunk_simple(chunk, chunk_idx, base_tag, model_id):
       for item in chunk:
         writer.writerow([item])
 
-    cmd = (
-      f"bash {FRAMEWORK_FOLDER}/run.sh {FRAMEWORK_FOLDER} {input_f} {output_f} {ROOT}"
-    )
-    subprocess.run(cmd, shell=True, check=True)
+    warm.run_framework(input_f, output_f)
     with open(output_f, "r", newline="") as csvfile:
       reader = csv.reader(csvfile)
       rows = list(reader)
@@ -565,8 +566,7 @@ def _process_chunk_heavy(chunk, chunk_idx, base_tag, model_id):
   output_f_bin = os.path.join(model_task_path, f"output-{tag}.bin")
   try:
     write_smiles_bin(chunk, input_f_bin)
-    cmd = f"bash {FRAMEWORK_FOLDER}/run.sh {FRAMEWORK_FOLDER} {input_f_bin} {output_f_bin} {ROOT}"
-    subprocess.run(cmd, shell=True, check=True)
+    warm.run_framework(input_f_bin, output_f_bin)
     if not os.path.exists(output_f_bin):
       raise FileNotFoundError(f"{output_f_bin} not found")
     results, header = read_bin(output_f_bin)

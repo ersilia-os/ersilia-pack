@@ -1,6 +1,7 @@
 import psutil
 from fastapi import APIRouter
 
+from .. import warm
 from ..exceptions.errors import breaker
 
 
@@ -18,5 +19,6 @@ def health_check():
       "next_reset": breaker.next_reset,
     },
     "system": {"cpu": psutil.cpu_percent(), "memory": psutil.virtual_memory().percent},
+    "warm": {"active": warm.is_active(), "loaded": warm.is_loaded()},
   }
   return status
