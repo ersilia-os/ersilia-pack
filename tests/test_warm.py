@@ -220,3 +220,34 @@ class TestRunFramework:
       warm.stop()
     assert proc.poll() is not None
     assert not warm.is_loaded()
+
+
+class TestStatus:
+  def test_reports_memory_held_by_loaded_model(self, framework, monkeypatch):
+    # load_tool() keeps ~60 MB alive; the reported memory must include it.
+    _write(
+      framework / "code" / "main.py",
+      "def load_tool():\n    return bytearray(60 * 1024 * 1024)\n\n"
+      "def run_tool(model, i, o):\n    pass\n",
+    )
+    monkeypatch.setattr(warm, "_worker", None)
+    warm.start()
+    try:
+      warm.get_worker().ensure_loaded()
+      info = warm.status()
+      assert info["active"] and info["loaded"]
+      assert info["loadSeconds"] >= 0
+      assert info["memoryAfterLoadMb"] >= 60
+      assert info["memoryMb"] >= 60
+      assert info["pid"] == warm.get_worker().proc.pid
+      if sys.platform.startswith("linux"):
+        assert info["peakMemoryMb"] >= 60
+    finally:
+      warm.stop()
+    assert warm.status()["memoryMb"] is None
+
+  def test_cold_model_reports_inactive(self, framework, monkeypatch):
+    _write(framework / "code" / "main.py", COLD_MAIN)
+    monkeypatch.setattr(warm, "_worker", None)
+    warm.start()
+    assert warm.status() == {"active": False, "loaded": False}

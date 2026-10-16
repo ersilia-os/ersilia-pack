@@ -1,4 +1,6 @@
-import ast, json, os, re, subprocess, sys, threading
+import ast, contextlib, json, os, re, subprocess, sys, threading, time
+
+import psutil
 
 from .default import FRAMEWORK_FOLDER, ROOT, cprint
 
@@ -20,6 +22,36 @@ def _log(text, **kwargs):
   # happens. The [warm] prefix makes the path a model takes easy to grep.
   cprint(f"[warm] {text}", **kwargs)
   sys.stdout.flush()
+
+
+def _mb(n_bytes):
+  return round(n_bytes / (1024 * 1024), 1)
+
+
+def _rss_tree(pid):
+  # Resident memory of the worker plus any processes the model started.
+  try:
+    proc = psutil.Process(pid)
+    procs = [proc] + proc.children(recursive=True)
+  except psutil.Error:
+    return None
+  total = 0
+  for p in procs:
+    with contextlib.suppress(psutil.Error):
+      total += p.memory_info().rss
+  return total
+
+
+def _peak_rss(pid):
+  # Linux high-water mark of the worker process (children not included).
+  try:
+    with open(f"/proc/{pid}/status") as f:
+      for line in f:
+        if line.startswith("VmHWM:"):
+          return int(line.split()[1]) * 1024
+  except (OSError, ValueError, IndexError):
+    pass
+  return None
 
 
 class WarmWorkerDied(Exception):
@@ -72,9 +104,12 @@ class WarmWorker(object):
     self.loaded = False
     # Set when load_tool() fails: the model then stays on the cold path for good.
     self.disabled = False
+    self.load_seconds = None
+    self.loaded_rss = None
 
   def _start(self):
     _log(f"Starting worker with {self.python_exe}", fg="blue")
+    started = time.time()
     self.proc = subprocess.Popen(
       [self.python_exe, WORKER_SCRIPT, MAIN_PY],
       stdin=subprocess.PIPE,
@@ -89,8 +124,29 @@ class WarmWorker(object):
       self.disabled = True
       self._stop()
       return
+    self.load_seconds = round(time.time() - started, 2)
+    self.loaded_rss = _rss_tree(self.proc.pid)
     self.loaded = True
     _log("Model loaded in worker: new structure (load_tool + run_tool)", fg="green", bold=True)
+    _log(
+      f"Load took {self.load_seconds} s; the loaded model holds "
+      f"{_mb(self.loaded_rss or 0)} MB of memory",
+      fg="green",
+    )
+
+  def memory(self):
+    # Read without the lock so /models/status answers even during a batch.
+    proc = self.proc
+    pid = proc.pid if proc is not None and proc.poll() is None else None
+    current = _rss_tree(pid) if pid else None
+    peak = _peak_rss(pid) if pid else None
+    return {
+      "loadSeconds": self.load_seconds,
+      "memoryAfterLoadMb": _mb(self.loaded_rss) if self.loaded_rss else None,
+      "memoryMb": _mb(current) if current else None,
+      "peakMemoryMb": _mb(peak) if peak else None,
+      "pid": pid,
+    }
 
   def _read(self):
     line = self.proc.stdout.readline()
@@ -159,6 +215,15 @@ def is_active():
 
 def is_loaded():
   return is_active() and _worker.loaded
+
+
+def status():
+  # Warm serving state for /models/status. Memory is that of the worker that
+  # holds the model, which the server's own memoryUsage does not include.
+  info = {"active": is_active(), "loaded": is_loaded()}
+  if _worker is not None:
+    info.update(_worker.memory())
+  return info
 
 
 def start():
