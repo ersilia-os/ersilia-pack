@@ -17,6 +17,7 @@ from ..default import (
   MAX_BATCH_DELAY,
   LOADED_AT_STARTUP,
 )
+from .. import warm
 from ..utils import get_metadata, create_limiter, rate_limit, compute_memory_usage
 
 
@@ -98,6 +99,7 @@ async def get_api_info(
     maxBatchDelay=MAX_BATCH_DELAY,
     loadedAtStartup=LOADED_AT_STARTUP,
     workers=[worker_info],
+    warm=warm.status(),
   )
 
   return JSONResponse(content=[api_info.dict()])
