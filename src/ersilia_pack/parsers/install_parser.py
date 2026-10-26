@@ -6,9 +6,15 @@ import warnings
 from ..utils import get_conda_source, get_native, conda_python_executable
 
 
+DEVICES = ("cpu", "gpu")
+
+
 class InstallParser:
-  def __init__(self, file_name, conda_env_name=None):
+  def __init__(self, file_name, conda_env_name=None, device="cpu"):
+    if device not in DEVICES:
+      raise ValueError(f"Device must be one of {DEVICES}, got '{device}'")
     self.conda_env_name = conda_env_name
+    self.device = device
     self.file_name = file_name
     self.python_version = self._get_python_version()
 

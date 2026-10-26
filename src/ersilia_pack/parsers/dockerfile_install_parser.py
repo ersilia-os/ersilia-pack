@@ -8,9 +8,14 @@ FILE_TYPE = "Dockerfile"
 
 
 class DockerfileInstallParser(InstallParser):
-  def __init__(self, file_dir, conda_env_name=None):
+  def __init__(self, file_dir, conda_env_name=None, device="cpu"):
+    if device == "gpu":
+      raise ValueError("GPU install is only supported with install.yml")
     file_name = os.path.join(file_dir, FILE_TYPE)
-    super().__init__(file_name, conda_env_name)
+    super().__init__(file_name, conda_env_name, device)
+
+  def has_gpu(self):
+    return False
 
   def _get_python_version(self):
     with open(self.file_name) as f:

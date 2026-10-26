@@ -1,0 +1,7 @@
+python: "3.11"
+commands:
+    - ["pip", "torch", "2.10.0", "--index-url", "https://download.pytorch.org/whl/cpu"]
+    - ["pip", "pandas", "2.1.4"]
+gpu:
+    - ["pip", "torch", "2.10.0", "--index-url", "https://download.pytorch.org/whl/cu126"]
+    - ["pip", "pandas", "2.1.4"]

@@ -79,3 +79,8 @@ class TestDockerfileInstallParser:
     parser = DockerfileInstallParser(file_dir="tests/data")
     with pytest.raises(ValueError):
       parser._convert_commands_to_bash_script()
+
+
+def test_dockerfile_gpu_not_supported():
+  with pytest.raises(ValueError, match="install.yml"):
+    DockerfileInstallParser(file_dir="tests/data", device="gpu")

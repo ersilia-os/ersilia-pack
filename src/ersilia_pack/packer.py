@@ -19,7 +19,7 @@ root = os.path.dirname(os.path.abspath(__file__))
 
 
 class FastApiAppPacker(object):
-  def __init__(self, repo_path, bundles_repo_path, conda_env_name=None):
+  def __init__(self, repo_path, bundles_repo_path, conda_env_name=None, device="cpu"):
     self.root = os.path.dirname(os.path.abspath(__file__))
     self.dest_dir = repo_path
     self.bundles_repo_path = bundles_repo_path
@@ -40,9 +40,11 @@ class FastApiAppPacker(object):
       os.makedirs(os.path.join(self.bundle_dir, "installs"))
     self.sh_file = os.path.join(self.bundle_dir, "installs", "install.sh")
     if self._has_dockerfile():
-      self.install_writer = DockerfileInstallParser(self.dest_dir, conda_env_name)
+      self.install_writer = DockerfileInstallParser(
+        self.dest_dir, conda_env_name, device
+      )
     elif self._has_install_yml():
-      self.install_writer = YAMLInstallParser(self.dest_dir, conda_env_name)
+      self.install_writer = YAMLInstallParser(self.dest_dir, conda_env_name, device)
     else:
       raise Exception("No install file found")  # TODO implement better exceptions
 
@@ -357,8 +359,18 @@ def main():
     default=None,
     help="Name of the conda environment to use. This is optional",
   )
+  parser.add_argument(
+    "--device",
+    required=False,
+    type=str,
+    default="cpu",
+    choices=["cpu", "gpu"],
+    help="Install the 'commands' (cpu) or the 'gpu' section of install.yml",
+  )
   args = parser.parse_args()
-  fp = FastApiAppPacker(args.repo_path, args.bundles_repo_path, args.conda_env_name)
+  fp = FastApiAppPacker(
+    args.repo_path, args.bundles_repo_path, args.conda_env_name, args.device
+  )
   fp.pack()
 
 

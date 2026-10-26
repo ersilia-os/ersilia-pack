@@ -98,6 +98,8 @@ class MetadataYml2JsonConverter:
       data["DockerHub"] = self._tostr(self.data["DockerHub"])
     if "Docker Architecture" in self.data:
       data["Docker Architecture"] = self._tolist(self.data["Docker Architecture"])
+    if "Device" in self.data:
+      data["Device"] = self._tolist(self.data["Device"])
     if "Docker Pack Method" in self.data:
       data["Docker Pack Method"] = self._tostr(self.data["Docker Pack Method"])
     if "Model Size" in self.data:
