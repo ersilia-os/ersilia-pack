@@ -183,6 +183,8 @@ class FastApiAppPacker(object):
       ("run_uvicorn.py", os.path.join(self.bundle_dir, "run_uvicorn.py")),
       ("utils.py", os.path.join(app_dir, "utils.py")),
       ("default.py", os.path.join(app_dir, "default.py")),
+      ("warm.py", os.path.join(app_dir, "warm.py")),
+      ("warm_worker.py", os.path.join(app_dir, "warm_worker.py")),
       ("exceptions/handlers.py", os.path.join(app_dir, "exceptions", "handlers.py")),
       ("exceptions/errors.py", os.path.join(app_dir, "exceptions", "errors.py")),
       ("middleware/rcontext.py", os.path.join(app_dir, "middleware", "rcontext.py")),

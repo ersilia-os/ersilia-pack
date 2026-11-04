@@ -1,7 +1,7 @@
 import logging, os, tempfile, traceback, sys, uuid
 from datetime import datetime
 from fastapi.responses import JSONResponse
-from typing import List
+from typing import Any, Dict, List, Optional
 from pathlib import Path
 from enum import Enum
 from pydantic import BaseModel
@@ -119,6 +119,7 @@ class APIInfo(BaseModel):
   maxBatchDelay: int
   loadedAtStartup: bool
   workers: List[Worker]
+  warm: Optional[Dict[str, Any]] = None
 
 
 class ErrorMessages(str, Enum):

@@ -12,6 +12,7 @@ from .default import (
 )
 from .exceptions.handlers import register_exception_handlers
 from .middleware.rcontext import RequestContextMiddleware
+from . import warm
 from .routers import docs, metadata, run, health, job
 from .utils import get_sync_metadata, create_limiter, init_redis
 
@@ -43,6 +44,12 @@ if ENVIRONMENT == "prod":
 @app.on_event("startup")
 async def startup_event():
   init_redis()
+  warm.start()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+  warm.stop()
 
 
 register_exception_handlers(app)
