@@ -10,6 +10,7 @@
 
 [Installation](#installation) ·
 [Usage](#usage) ·
+[Warm Serving](#warm-serving) ·
 [Code Quality](#code-quality) ·
 [API Documentation](#api-documentation) ·
 [Output Orientation](#output-orientation) ·
@@ -37,6 +38,7 @@ All Redis calls (`HMGET`, `HSET`, `GET`, `SETEX`, pipeline expirations) are now 
 
 - [Installation](#installation)
 - [Usage](#usage)
+- [Warm Serving](#warm-serving)
 - [Code Quality](#code-quality)
 - [API Documentation](#api-documentation)
   - [Core Endpoints Overview](#core-endpoints-overview)
@@ -83,6 +85,30 @@ After packaging, serve the application with:
 ersilia_model_serve --bundle_path $BUNDLE_PATH --port $PORT
 ```
 
+---
+
+## Warm Serving
+
+By default the server runs `run.sh` for every batch, so the model is loaded again each time. With warm serving, a long-lived worker process loads the model once and keeps it in memory between batches.
+
+A model opts in when its `model/framework/code/main.py` defines two top-level functions:
+
+```python
+def load_tool():
+    # Load checkpoints and anything else that is expensive. Called once.
+    return model
+
+def run_tool(model, input_file, output_file):
+    # Run one batch with the already loaded model.
+    ...
+```
+
+- **Detection:** warm serving is used only when `run.sh` has the standard one-line shape (`python $1/code/main.py $2 $3`).
+- **Fallback:** models without these functions keep the old path (`run.sh` per batch). If `load_tool()` fails, the model uses `run.sh` from then on. If the worker process dies during a batch, that batch is rerun with `run.sh` and the next batch starts a fresh worker. If `run_tool()` raises an error, the batch fails with that error.
+- **Batches:** while warm serving is active, batches run one after the other in the single worker instead of being split across processes.
+- **Turning it off:** set `ERSILIA_WARM=0` (or `false`/`no`) before serving.
+- **Monitoring:** `/healthz` and `/models/status` report whether warm serving is active and the model is loaded; `/models/status` also reports the worker's memory. Log lines start with `[warm]`.
+
 ## Code Quality
 
 To keep our codebase clean and consistent, we use [pre-commit](https://pre-commit.com/) hooks alongside [Ruff](https://github.com/astro-build/ruff) as our linter/formatter.
@@ -102,7 +128,7 @@ pip install pre-commit ruff
 |------------------------|-------------------------------|------------------------------|-----------------------------------------------------------------------------------------------------------|
 | **Core**               | Swagger UI                    | `/docs`                      | Interactive API interface with custom styling and title.                                                  |
 |                        | ReDoc                         | `/redoc`                     | Alternative documentation view with a comprehensive layout.                                               |
-|                        | Health Check                  | `/healthz`                   | Returns system status (CPU, memory, circuit breaker stats).                                               |
+|                        | Health Check                  | `/healthz`                   | Returns system status (CPU, memory, circuit breaker stats, warm serving state).                           |
 |                        | Base URL                      | `/`                          | Displays basic info (model identifier and slug).                                                          |
 | **Job Management**     | Submit Job                    | `/job/submit`                    | Accepts input data, queues an async job, returns a unique job ID.                                         |
 |                        | Job Status                    | `/job/status/{job_id}`           | Check the current status of a job (pending, completed, failed).                                           |
@@ -115,7 +141,7 @@ pip install pre-commit ruff
 |                        | Input Columns                 | `/run/columns/input`         | Lists the input data headers.                                                                             |
 |                        | Output Columns                | `/run/columns/output`        | Lists the output data headers.                                                                            |
 |                        | Execute Job (sync)            | `/run`                       | Processes input data synchronously and returns computed results.                                          |
-| **Model Information**  | Model Status                  | `/models/status`             | Provides details on model version, runtime environment, and worker statuses.                              |
+| **Model Information**  | Model Status                  | `/models/status`             | Provides details on model version, runtime environment, worker statuses, and warm worker memory.          |
 ---
 
 ## Output Orientation
