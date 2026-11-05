@@ -83,6 +83,28 @@ After packaging, serve the application with:
 ersilia_model_serve --bundle_path $BUNDLE_PATH --port $PORT
 ```
 
+### GPU builds
+
+A model can declare a second, GPU install in `install.yml` with a `gpu:` key. It is a complete list of commands in the same format as `commands:` (not only the differences), and it shares the same `python:` version:
+
+```yaml
+python: "3.11"
+commands:
+    - ["pip", "torch", "2.10.0", "--index-url", "https://download.pytorch.org/whl/cpu"]
+gpu:
+    - ["pip", "torch", "2.10.0", "--index-url", "https://download.pytorch.org/whl/cu126"]
+```
+
+Pack with `--device gpu` to install the `gpu:` list instead of `commands:`:
+
+```bash
+ersilia_model_pack --repo_path $REPO_PATH --bundles_repo_path $BUNDLE_PATH --device gpu
+```
+
+- `--device` is `cpu` by default, so existing builds are unchanged.
+- `--device gpu` stops with an error if `install.yml` has no `gpu:` key, or if the model uses a `Dockerfile` instead of `install.yml`.
+- The optional `Device` field of the model metadata (`CPU`, `GPU`) is copied to `information.json`.
+
 ## Code Quality
 
 To keep our codebase clean and consistent, we use [pre-commit](https://pre-commit.com/) hooks alongside [Ruff](https://github.com/astro-build/ruff) as our linter/formatter.
