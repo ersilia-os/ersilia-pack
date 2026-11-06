@@ -8,11 +8,13 @@ FILE_TYPE = "install.yml"
 
 
 class YAMLInstallParser(InstallParser):
-  def __init__(self, file_dir, conda_env_name=None):
+  def __init__(self, file_dir, conda_env_name=None, device="cpu"):
     self.file_type = FILE_TYPE
     self.file_name = os.path.join(file_dir, self.file_type)
     self.data = self._load_yaml()
-    super().__init__(self.file_name, conda_env_name)
+    super().__init__(self.file_name, conda_env_name, device)
+    if device == "gpu" and not self.has_gpu():
+      raise ValueError("GPU install requires a 'gpu' section in install.yml")
 
   def _load_yaml(self):
     with open(self.file_name, "r") as file:
@@ -24,6 +26,11 @@ class YAMLInstallParser(InstallParser):
     return self.data["python"]
 
   def _get_commands(self):
-    if "commands" not in self.data:
-      raise KeyError("Missing 'commands' key in YAML file")
-    return self.data["commands"]
+    # 'commands' installs the CPU image, 'gpu' (same format) the GPU image
+    key = "gpu" if self.device == "gpu" else "commands"
+    if key not in self.data:
+      raise KeyError(f"Missing '{key}' key in YAML file")
+    return self.data[key]
+
+  def has_gpu(self):
+    return "gpu" in self.data
