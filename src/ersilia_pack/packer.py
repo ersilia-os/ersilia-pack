@@ -68,9 +68,21 @@ class FastApiAppPacker(object):
 
   def _create_bundle_structure(self):
     logger.debug("Copying model")
+    model_src = os.path.join(self.dest_dir, "model")
+    fit_parent = os.path.join(model_src, "framework")
+
+    # model/framework/fit holds training data and code, which may be private and is never
+    # needed at inference. Leave it out so it cannot end up in a published image.
+    def _ignore_fit(directory, names):
+      if os.path.abspath(directory) == os.path.abspath(fit_parent) and "fit" in names:
+        logger.debug("Skipping model/framework/fit")
+        return {"fit"}
+      return set()
+
     shutil.copytree(
-      os.path.join(self.dest_dir, "model"),
+      model_src,
       os.path.join(self.bundle_dir, "model"),
+      ignore=_ignore_fit,
     )
     logger.debug("Copying the favicon")
 

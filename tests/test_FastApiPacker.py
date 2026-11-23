@@ -170,6 +170,26 @@ class TestFastApiPacker:
 
         assert os.path.exists(os.path.join(packer.bundle_dir, "model", "test_file.txt"))
 
+    def test_create_bundle_structure_skips_fit(self, temp_model_directory, bundles_repo_path):
+        framework = temp_model_directory / "model" / "framework"
+        (framework / "fit" / "data").mkdir(parents=True)
+        (framework / "fit" / "data" / "train.csv").write_text("smiles,y\nC,1\n")
+        (framework / "code").mkdir()
+        (framework / "code" / "main.py").write_text("print('ok')")
+        (framework / "code" / "fit").mkdir()
+        (framework / "code" / "fit" / "keep.txt").write_text("not the training folder")
+        metadata_file = temp_model_directory / "metadata.json"
+        metadata_file.write_text(json.dumps({"Identifier": "test_model_id", "Output Type": "Float"}))
+        install_file = temp_model_directory / "install.yml"
+        install_file.write_text(yaml.dump({"python": "3.8", "pip": ["requests"]}))
+        packer = FastApiAppPacker(str(temp_model_directory), str(bundles_repo_path))
+        packer._create_bundle_structure()
+
+        bundled = os.path.join(packer.bundle_dir, "model", "framework")
+        assert not os.path.exists(os.path.join(bundled, "fit"))
+        assert os.path.exists(os.path.join(bundled, "code", "main.py"))
+        assert os.path.exists(os.path.join(bundled, "code", "fit", "keep.txt"))
+
     # 5. Test _get_input_schema
     @patch("shutil.copy")
     def test_get_input_schema(self, mock_copy, temp_model_directory, bundles_repo_path):
