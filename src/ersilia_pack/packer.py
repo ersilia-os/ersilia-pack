@@ -238,8 +238,16 @@ class FastApiAppPacker(object):
     return os.path.exists(os.path.join(self.dest_dir, "Dockerfile"))
 
   def _install_packages(self):
-    cmd = f"bash {self.sh_file}"
-    run_command(cmd)
+    # -e stops at the first failing command. Without it a failed install is
+    # skipped, and the model is packed (and its image published) without the
+    # package, failing only when it is run.
+    cmd = f"bash -e {self.sh_file}"
+    result = run_command(cmd)
+    if result.returncode != 0:
+      raise RuntimeError(
+        f"Installing the model dependencies failed (return code {result.returncode}). "
+        "See the install output above."
+      )
 
   def _get_example_output(self, path):
     with open(
